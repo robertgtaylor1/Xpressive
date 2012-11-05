@@ -1,0 +1,123 @@
+﻿<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+"http://www.w3.org/TR/html4/loose.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+	<head>
+		<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+		<title>Xpressive.js XMPP Client</title>
+
+		<link rel="stylesheet" href="Content/themes/base/jquery-ui.css" />
+
+		<script type="text/javascript" src='scripts/jquery-1.8.2.js'></script>
+		<script type="text/javascript" src='scripts/jquery-ui-1.8.24.js'></script>
+		<script type="text/javascript" src='scripts/ui.tabs.closable.js'></script>
+		<!--<script type="text/javascript" src='scripts/jquery.scrollabletab.js'></script>-->
+		
+		<script type="text/javascript" src='scripts/flXHR.js'></script>
+		<script type="text/javascript" src='scripts/strophe.js'></script>
+		<script type="text/javascript" src='scripts/strophe.flxhr.js'></script>
+
+		<link rel='stylesheet' href='xpressive.ui.css' />
+
+		<script type="text/javascript" src='scripts/sha1.js'></script>
+
+		<script type="text/javascript" src='scripts/strophe.me.js'></script>
+		<script type="text/javascript" src='scripts/strophe.disco.js'></script>
+		<script type="text/javascript" src='scripts/strophe.CAPS.js'></script>
+		<script type="text/javascript" src='scripts/strophe.session.js'></script>
+		<script type="text/javascript" src='scripts/strophe.muc.js'></script>
+		<script type="text/javascript" src='scripts/strophe.roster.js'></script>
+		<script type="text/javascript" src='scripts/strophe.chatstates.js'></script>
+		<script type="text/javascript" src='scripts/strophe.chat.js'></script>
+
+		<script type="text/javascript" src='xpressive.js'></script>
+	</head>
+	<body>
+		<h1> Xpressive XMPP Client</h1>
+		<table>
+			<tr>
+				<td>
+				<div id='toolbar'>
+					<span class='button' id='toggle-lists'>Show Rooms</span>&nbsp; 
+					<span class='button' id='away-pres'>Away</span>&nbsp; 
+					<span class='button' id='available-pres'>Available</span>&nbsp; 
+					<span class='button' id='new-contact'>Add Contact...</span>&nbsp; 
+					<span class='button' id='new-chat'>Chat with...</span>&nbsp; 
+					<span class='button' id='disconnect'>Disconnect</span>
+				</div></td>
+			</tr>
+			<tr>
+				<td>
+				<div id='chat-region'>
+					<!-- Xmpp Roster area -->
+					<div id='roster-area'>
+						<ul>
+							Roster
+						</ul>
+					</div>
+
+					<!-- Muc area -->
+					<div id='muc-area' class='hidden'>
+						<ul>
+							Servers							
+						</ul>
+					</div>
+
+					<!-- chat tabs region (includes a debug/console tab)-->
+					<div id='chat-area'>
+						<ul></ul>
+					</div>
+				</div></td>
+			</tr>
+		</table>
+		<!-- login dialog -->
+		<div id='login_dialog' class='hidden'>
+			<label> JID:</label>
+			<br/>
+			<input type='text' id='jid' />
+			<br/>
+			<label> Password:</label>
+			<br/>
+			<input type='password' id='password' />
+		</div>
+
+		<!-- contact dialog -->
+		<div id='contact_dialog' class='hidden'>
+			<label>JID:</label>
+			<br/>
+			<input type='text' id='contact-jid'>
+			<br/>
+			<label>Name:</label>
+			<br/>
+			<input type='text' id='contact-name'>
+		</div>
+
+		<!-- chat dialog -->
+		<div id='chat_dialog' class='hidden'>
+			<label>JID:</label>
+			<br/>
+			<input type='text' id='chat-jid'>
+		</div>
+
+		<!-- join room dialog -->
+		<div id='join_room_dialog' class='hidden'>
+			<label>Room:</label><span id='room-name'></span>
+			<br/>
+			<label>Enter a nickname:</label>
+			<br/>
+			<input type='text' id='room-nickname'>
+			<div id='room-password-div'>				
+				<label>A password is required:</label>
+				<br/>
+				<input type='password' id='room-password' />
+			</div>
+		</div>
+
+		<!-- approval dialog -->
+		<div id='approve_dialog' class='hidden'>
+			<p>
+				<span id='approve-jid'></span> has requested a subscription
+				to your presence.  Approve or deny?
+			</p>
+		</div>
+	</body>
+</html>
