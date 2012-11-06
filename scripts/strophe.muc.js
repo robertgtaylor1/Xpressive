@@ -154,11 +154,11 @@ Room.prototype = {
 			xmlns : Strophe.NS.DISCO_ITEMS
 		};
 		info = $iq({
-			from : this._connection.jid,
+			from : this.connection.jid,
 			to : roomJid,
 			type : 'get'
 		}).c('query', attrs);
-		this._connection.sendIQ(info, this._occupantsInfo, this._errorInfo);
+		this.connection.sendIQ(info, this._occupantsInfo, this._errorInfo);
 	},
 
 	_occupantsInfo : function(iq) {
@@ -271,7 +271,7 @@ Server.prototype = {
 		if (!room) {
 			return false;
 		}
-		room.incommingMucMessage(stanza);
+		room.incomingMucMessage(stanza);
 	},
 
 	isRoom : function(jid) {
@@ -290,7 +290,7 @@ Server.prototype = {
 };
 
 function Servers(connection) {
-	this.connection = connection;
+	this.conn = connection;
 	this.servers = {};
 }
 
@@ -298,7 +298,7 @@ Servers.prototype = {
 
 	addServer : function(jid) {
 		var serverJid = Strophe.getDomainFromJid(jid);
-		this.servers[serverJid] = new Server(serverJid, this.connection);
+		this.servers[serverJid] = new Server(serverJid, this.conn);
 		this.servers[serverJid].getInfo();
 	},
 
@@ -317,14 +317,14 @@ Servers.prototype = {
 			serverJid = Strophe.getDomainFromJid(from);
 			server = this.servers[serverJid];
 			if (server) {
-				return server.incommingMucMessage(stanza);
+				return server.incomingMucMessage(stanza);
 			}
 		}
 		return false;
 	},
 
 	isRoom : function(jid) {
-		server = this.getServer(jid);
+		var server = this.getServer(jid);
 		if (server) {
 			return server.isRoom(jid);
 		}
@@ -347,19 +347,21 @@ Servers.prototype = {
 	},
 };
 
-Strophe.addConnectionPlugin('muc', {
-
-	init : function(connection) {
+Strophe.addConnectionPlugin('muc',(function() {
+	var init, statusChanged, processDiscoItems, join, leave, isRoomSecure, 
+	    handlePresence, getRooms, createRoom;
+	    
+	init = function(connection) {
 		Strophe.debug("init muc plugin");
 
 		this.connection = connection;
 		this.servers = {};
 
 		Strophe.addNamespace('MUC', 'jabber:iq:muc');
-	},
+	};
 
 	// called when connection status is changed
-	statusChanged : function(status) {
+	statusChanged = function(status) {
 		if (status === Strophe.Status.CONNECTED) {
 			this.servers = new Servers(this.connection);
 			this.connection.addHandler(this.handlePresence.bind(this), Strophe.NS.MUC_USER, "presence");
@@ -367,9 +369,9 @@ Strophe.addConnectionPlugin('muc', {
 		} else if (status === Strophe.Status.DISCONNECTED) {
 			this.servers = {};
 		}
-	},
+	};
 
-	processDiscoItems : function(iq) {
+	processDiscoItems = function(iq) {
 		var discoItems = $(iq);
 		var mucJid;
 		var mucInfoRequest;
@@ -382,31 +384,31 @@ Strophe.addConnectionPlugin('muc', {
 		if (mucJid) {
 			this.servers.addServer(mucJid);
 		}
-	},
+	};
 
-	join : function(roomJid, nickname, password) {
+	join = function(roomJid, nickname, password) {
 		var room = this.servers.getRoom(roomJid);
 		room.nickname = nickname;
 
 		$(document).trigger('join_room', room);
 
 		room.join(nickname, password);
-	},
+	};
 
-	leave : function(roomJid) {
+	leave = function(roomJid) {
 		var room = this.servers.getRoom(roomJid);
 		room.nickname = null;
-	},
+	};
 
-	isRoomSecure : function(roomJid) {
+	isRoomSecure = function(roomJid) {
 		var room = this.servers.getRoom(roomJid);
 		if (room) {
 			return room.requiresPassword();
 		}
 		return true;
-	},
+	};
 
-	handlePresence : function(stanza) {
+	handlePresence = function(stanza) {
 		var nickname;
 		var presence = $(stanza);
 		var from = presence.attr('from');
@@ -421,13 +423,24 @@ Strophe.addConnectionPlugin('muc', {
 			Strophe.info("Presence ignored for: " + from);
 		}
 		return true;
-	},
+	};
 
-	getRooms : function() {
+	getRooms = function() {
 		// TODO
-	},
+	};
 
-	createRoom : function(server, name) {
+	createRoom = function(server, name) {
 		// TODO
+	};
+	
+	return {
+		init : init, 
+		statusChanged : statusChanged,  
+		processDiscoItems : processDiscoItems, 
+		join : join, 
+		leave : leave, 
+		isRoomSecure : isRoomSecure, 
+	    getRooms : getRooms, 
+	    createRoom : createRoom
 	}
-});
+})());

@@ -53,13 +53,12 @@ Contact.prototype = {
 	}
 };
 
-function Contacts() {
+function Contacts(connection) {
+	this.conn = connection;
 	this.list = {};
 }
 
 Contacts.prototype = {
-	list : {},
-	
 	// called when roster udpates are received
 	rosterChanged : function(iq) {
 
@@ -69,7 +68,7 @@ Contacts.prototype = {
 
 		if (subscription === "remove") {
 			// removing contact from roster
-			delete this.contacts.list[jid];
+			delete this.list[jid];
 		} else if (subscription === "none") {
 			// adding contact to roster
 			var contact = new Contact(jid);
@@ -77,7 +76,7 @@ Contacts.prototype = {
 			item.find("group").each(function() {
 				contact.groups.push(this.text());
 			});
-			this.contacts.list[jid] = contact;
+			this.list[jid] = contact;
 		} else {
 			// modifying contact on roster
 			var contact = this.list[jid];
@@ -89,9 +88,9 @@ Contacts.prototype = {
 				contact.groups.push(this.text());
 			});
 		}
-
+		// TODO : look at this. It could be handled by an event (trigger)
 		// acknowledge receipt
-		this._connection.send($iq({
+		this.conn.send($iq({
 			type : "result",
 			id : $(iq).attr('id')
 		}).tree());
@@ -111,7 +110,7 @@ Contacts.prototype = {
 
 		Strophe.info("presence change for: " + from + " [" + ptype + "]");
 
-		if (!this.contacts.list[jid] || ptype === "error") {
+		if (!this.list[jid] || ptype === "error") {
 			// ignore presence updates from things not on the roster
 			// as well as error presence
 			return true;
@@ -120,44 +119,46 @@ Contacts.prototype = {
 		if (ptype === "unavailable") {
 			// remove resource, contact went offline
 			try {
-				delete this.contacts.list[jid].resources[resource];
+				delete this.list[jid].resources[resource];
 			} catch (e) {
 			}
 		} else {
 			// contact came online or changed status
-			this.contacts.list[jid].resources[resource] = {
+			this.list[jid].resources[resource] = {
 				show : $(presence).find("show").text() || "online",
 				status : $(presence).find("status").text()
 			};
 		}
 
 		// notify user code of roster changes
-		$(document).trigger("presence_changed", this.contacts.list[jid]);
+		$(document).trigger("presence_changed", this.list[jid]);
 
 		return true;
 	}
 }
 
 // example roster plugin
-Strophe.addConnectionPlugin('roster', {
-
-	init : function(connection) {
+Strophe.addConnectionPlugin('roster', (function() {
+	var init, statusChanged, findContact, deleteContact, addContact, modifyContact, subscribe, unsubscribe;
+	var _conn, _contacts;
+	
+	init = function(connection) {
 		Strophe.debug("init roster plugin");
 
-		this._connection = connection;
-		this.contacts = {};
-	},
+		_conn = connection;
+		_contacts = {};
+	};
 
 	// called when connection status is changed
-	statusChanged : function(status) {
-		var roster_iq, that, contact;
+	statusChanged = function(status) {
+		var roster_iq, contact;
 		
 		if (status === Strophe.Status.CONNECTED) {
-			this.contacts = new Contacts();
+			_contacts = new Contacts(_conn);
 
 			// set up handlers for updates
-			this._connection.addHandler(this.contacts.rosterChanged.bind(this), Strophe.NS.ROSTER, "iq", "set");
-			this._connection.addHandler(this.contacts.presenceChanged.bind(this), null, "presence");
+			_conn.addHandler(_contacts.rosterChanged.bind(_contacts), Strophe.NS.ROSTER, "iq", "set");
+			_conn.addHandler(_contacts.presenceChanged.bind(_contacts), null, "presence");
 
 			// build and send initial roster query
 			roster_iq = $iq({
@@ -166,8 +167,7 @@ Strophe.addConnectionPlugin('roster', {
 				xmlns : Strophe.NS.ROSTER
 			});
 
-			that = this;
-			this._connection.sendIQ(roster_iq, function(iq) {
+			_conn.sendIQ(roster_iq, function(iq) {
 				Strophe.info("roster_iq received.");
 
 				$(iq).find("item").each(function() {
@@ -180,33 +180,33 @@ Strophe.addConnectionPlugin('roster', {
 						contact.groups.push($(this).text());
 					});
 					// TODO move to prototype
-					that.contacts.list[$(this).attr('jid')] = contact;
+					_contacts.list[$(this).attr('jid')] = contact;
 				});
 
 				// let user code know something happened
-				$(document).trigger('roster_changed', that.contacts);
+				$(document).trigger('roster_changed', _contacts);
 				
 				// TODO find a way to fire an event to do this
-				that._connection.me.available();
+				_conn.me.available();
 			});
 		} else if (status === Strophe.Status.DISCONNECTED) {
 			// set all users offline
 			// TODO move to prototype
 			for (contact in this.contacts.list) {
-				this.contacts.list[contact].resources = {};
+				_contacts.list[contact].resources = {};
 			}
 
 			// notify user code
-			$(document).trigger('roster_changed', this.contacts);
+			$(document).trigger('roster_changed', _contacts);
 		}
-	},
+	};
 	
-	findContact : function(jid) {
-		return this.contacts.list[jid] || null;
-	},
+	findContact = function(jid) {
+		return _contacts.list[jid] || null;
+	};
 
 	// delete a contact from the roster
-	deleteContact : function(jid) {
+	deleteContact = function(jid) {
 		var iq = $iq({
 			type : "set"
 		}).c("query", {
@@ -215,11 +215,11 @@ Strophe.addConnectionPlugin('roster', {
 			jid : jid,
 			subscription : "remove"
 		});
-		this._connection.sendIQ(iq);
-	},
+		_conn.sendIQ(iq);
+	};
 
 	// add a contact to the roster
-	addContact : function(jid, name, groups) {
+	addContact = function(jid, name, groups) {
 		var iq = $iq({
 			type : "set"
 		}).c("query", {
@@ -233,33 +233,44 @@ Strophe.addConnectionPlugin('roster', {
 				iq.c("group").t(this).up();
 			});
 		}
-		this._connection.sendIQ(iq);
-	},
+		_conn.sendIQ(iq);
+	};
 
 	// modify a roster contact
-	modifyContact : function(jid, name, groups) {
-		this.addContact(jid, name, groups);
-	},
+	modifyContact = function(jid, name, groups) {
+		addContact(jid, name, groups);
+	};
 
 	// subscribe to a new contact's presence
-	subscribe : function(jid, name, groups) {
-		this.addContact(jid, name, groups);
+	subscribe = function(jid, name, groups) {
+		addContact(jid, name, groups);
 
 		var presence = $pres({
 			to : jid,
 			"type" : "subscribe"
 		});
-		this._connection.send(presence);
-	},
+		_conn.send(presence);
+	};
 
 	// unsubscribe from a contact's presence
-	unsubscribe : function(jid) {
+	unsubscribe = function(jid) {
 		var presence = $pres({
 			to : jid,
 			"type" : "unsubscribe"
 		});
-		this._connection.send(presence);
+		_conn.send(presence);
 
-		this.deleteContact(jid);
+		deleteContact(jid);
+	};
+	
+	return {
+		init : init,
+		statusChanged : statusChanged,
+		findContact : findContact,
+		deleteContact : deleteContact,
+		addContact : addContact,
+		modifyContact : modifyContact,
+		subscribe : subscribe,
+		unsubscribe : unsubscribe
 	}
-});
+})());

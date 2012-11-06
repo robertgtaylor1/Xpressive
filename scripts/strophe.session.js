@@ -1,28 +1,27 @@
 function Session(connection) {
-	this.jid = connection.jid;
-	this.connection = connection;
-	//this._this = this;
+	this.conn = connection;
+	this.jid = function () {
+		return Strophe.getDomainFromJid(this.conn.jid);
+		};	
 	this.discoInfo = {};
 	this.discoItems = {};
-}
+};
 
-Session.prototype = {
-		
+Session.prototype = {		
 	onDiscoInfo : function(iq) {
 		Strophe.info("got disco#info response.");
 		this.discoInfo = iq;
 		
-		_jid = Strophe.getDomainFromJid(this.session.jid)
 		// Get info
-		var discoItems = $iq({
-			to : _jid,
+		var discoItemsIq = $iq({
+			to : this.jid,
 			type : 'get'
 		}).c('query', {
 			xmlns : Strophe.NS.DISCO_ITEMS
 		});
 
 		Strophe.info("request disco#items.");
-		this.session.connection.sendIQ(discoItems, this.session.onDiscoItems.bind(this), this.session.onItemsError.bind(this));
+		this.conn.sendIQ(discoItemsIq, this.onDiscoItems.bind(this), this.onItemsError.bind(this));
 	},
 
 	onInfoError : function(iq) {
@@ -35,13 +34,13 @@ Session.prototype = {
 	
 	onDiscoItems : function(iq) {
 		Strophe.info("got disco#items response.");
-		this.session.discoItems = iq;
+		this.discoItems = iq;
 		
-		if (this.session.connection.muc){
-			this.session.connection.muc.processDiscoItems(iq);
+		if (this.conn.muc){
+			this.conn.muc.processDiscoItems(iq);
 		}
-		if (this.session.connection.pubsub){
-			this.session.connection.pubsub.processDiscoItems(iq);
+		if (this.conn.pubsub){
+			this.conn.pubsub.processDiscoItems(iq);
 		}
 	},
 
@@ -54,20 +53,22 @@ Session.prototype = {
 	}
 };
 
-Strophe.addConnectionPlugin('session', {
-
-	init : function(connection) {
+Strophe.addConnectionPlugin('session', (function() {
+	var init, statusChanged, disconnect, unhandledIq;
+	var _conn, _session;
+	
+	init = function(connection) {
 		Strophe.debug("init session plugin");
 
-		this.connection = connection;
-		this.session = new Session(connection);
-	},
+		_conn = connection;
+		_session = new Session(_conn);
+	};
 
 	// called when connection status is changed
-	statusChanged : function(status) {
+	statusChanged = function(status) {
 		if (status === Strophe.Status.CONNECTED || status === Strophe.Status.ATTACHED) {
 
-			this.session.jid = Strophe.getDomainFromJid(this.connection.jid)
+			_session.jid = Strophe.getDomainFromJid(_conn.jid)
 			// Get info
 			var discoInfo = $iq({
 				type : 'get'
@@ -75,19 +76,26 @@ Strophe.addConnectionPlugin('session', {
 				xmlns : Strophe.NS.DISCO_INFO
 			});
 			Strophe.info("request info");
-			this.connection.sendIQ(discoInfo, this.session.onDiscoInfo.bind(this), this.session.onInfoError.bind(this));
+			_conn.sendIQ(discoInfo, _session.onDiscoInfo.bind(_session), _session.onInfoError.bind(_session));
 			//this.connection.addHandler(this.unhandledIq, null, 'iq', 'get', null, null);
 		} else if (status === Strophe.Status.DISCONNECTED) {
-			this.session.discoInfo = {};
+			_session.discoInfo = {};
 		}
-	},
+	};
 
-	disconnect : function() {
-		this.connection.disconnect();
-	},
+	disconnect = function() {
+		_conn.disconnect();
+	};
 	
-	unhandledIq : function(iq) {
+	unhandledIq = function(iq) {
 		Strophe.info("Unhandled Iq");
 		return true;	
+	};
+	
+	return {
+		init : init,
+		statusChanged : statusChanged,
+		disconnect : disconnect,
+		unhandledIq : unhandledIq
 	}
-});
+})());
