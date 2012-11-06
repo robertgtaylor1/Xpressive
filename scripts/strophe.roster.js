@@ -140,12 +140,13 @@ Contacts.prototype = {
 // example roster plugin
 Strophe.addConnectionPlugin('roster', (function() {
 	var init, statusChanged, findContact, deleteContact, addContact, modifyContact, subscribe, unsubscribe;
-	var _conn, _contacts;
+	// local variables
+	var _connection, _contacts;
 	
 	init = function(connection) {
 		Strophe.debug("init roster plugin");
 
-		_conn = connection;
+		_connection = connection;
 		_contacts = {};
 	};
 
@@ -154,11 +155,11 @@ Strophe.addConnectionPlugin('roster', (function() {
 		var roster_iq, contact;
 		
 		if (status === Strophe.Status.CONNECTED) {
-			_contacts = new Contacts(_conn);
+			_contacts = new Contacts(_connection);
 
 			// set up handlers for updates
-			_conn.addHandler(_contacts.rosterChanged.bind(_contacts), Strophe.NS.ROSTER, "iq", "set");
-			_conn.addHandler(_contacts.presenceChanged.bind(_contacts), null, "presence");
+			_connection.addHandler(_contacts.rosterChanged.bind(_contacts), Strophe.NS.ROSTER, "iq", "set");
+			_connection.addHandler(_contacts.presenceChanged.bind(_contacts), null, "presence");
 
 			// build and send initial roster query
 			roster_iq = $iq({
@@ -167,7 +168,7 @@ Strophe.addConnectionPlugin('roster', (function() {
 				xmlns : Strophe.NS.ROSTER
 			});
 
-			_conn.sendIQ(roster_iq, function(iq) {
+			_connection.sendIQ(roster_iq, function(iq) {
 				Strophe.info("roster_iq received.");
 
 				$(iq).find("item").each(function() {
@@ -187,7 +188,7 @@ Strophe.addConnectionPlugin('roster', (function() {
 				$(document).trigger('roster_changed', _contacts);
 				
 				// TODO find a way to fire an event to do this
-				_conn.me.available();
+				_connection.me.available();
 			});
 		} else if (status === Strophe.Status.DISCONNECTED) {
 			// set all users offline
@@ -215,7 +216,7 @@ Strophe.addConnectionPlugin('roster', (function() {
 			jid : jid,
 			subscription : "remove"
 		});
-		_conn.sendIQ(iq);
+		_connection.sendIQ(iq);
 	};
 
 	// add a contact to the roster
@@ -233,7 +234,7 @@ Strophe.addConnectionPlugin('roster', (function() {
 				iq.c("group").t(this).up();
 			});
 		}
-		_conn.sendIQ(iq);
+		_connection.sendIQ(iq);
 	};
 
 	// modify a roster contact
@@ -249,7 +250,7 @@ Strophe.addConnectionPlugin('roster', (function() {
 			to : jid,
 			"type" : "subscribe"
 		});
-		_conn.send(presence);
+		_connection.send(presence);
 	};
 
 	// unsubscribe from a contact's presence
@@ -258,7 +259,7 @@ Strophe.addConnectionPlugin('roster', (function() {
 			to : jid,
 			"type" : "unsubscribe"
 		});
-		_conn.send(presence);
+		_connection.send(presence);
 
 		deleteContact(jid);
 	};

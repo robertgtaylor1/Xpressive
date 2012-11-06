@@ -125,11 +125,11 @@
 	},
 	
 	on_message : function(message, fromMe) {
-		var jid, full_jid, jid_id, chatTab, name, resource, composing, body, span; 
+		var jid, full_jid, jid_id, chatTab, name, resource, composing, body, span, messageSender; 
 		var	groupChat = false;
 
 		if (fromMe) {
-			jid = Strophe.getBareJidFromJid($(message).attr('to'));
+			jid = Strophe.getBareJidFromJid(this.connection.jid);
 			Xpressive.log("Sending message to: " + jid);
 			name = "Me";
 		} else {
@@ -141,6 +141,12 @@
 		chatTab = '#chat-' + jid_id;
 		groupChat = $(chatTab).data('groupChat') || false;
 		
+		if (groupChat){
+			messageSender = Xpressive.occupantJid_to_id(full_jid);
+		} else {
+			messageSender = Xpressive.jid_to_id(jid);
+		}
+				
 		if (!fromMe) {
 			if (groupChat){
 				name = Strophe.getResourceFromJid($(message).attr('from'));
@@ -196,19 +202,21 @@
 			$(chatTab + ' .chat-event').remove();
 
 			// add the new message
-			var lastUl = $(chatTab + ' .chat-messages ul').last();
+			var lastUl = $(chatTab + ' ul').last();
 			var appendUl = true;
 			
 			if (lastUl.length > 0) {
-				var lastUserId = $(lastUl).data('jidId');
-				if (lastUserId === jid_id) {
+				var lastUserId = $(chatTab + ' ul').last().data('sender');
+				// if it's the same sender as the last message then don't repeat the name
+				if (lastUserId === messageSender) {
 					appendUl = false;
 				}
 			}
 			if (appendUl) {
 				var thisUl = "<ul class='chat-message" + ( fromMe ? " me'" : "'" ) + ">" + "<span class='chat-name'>" + name + "</span>:&nbsp;<span class='chat-text'>" + "</span></ul>";
-				$(thisUl).data('jidId', jid_id);
+				//$(thisUl).data('jidId', jid_id);
 				$(chatTab + ' .chat-messages').append("<ul class='chat-message" + ( fromMe ? " me'" : "'" ) + ">" + "<span class='chat-name'>" + name + "</span>:&nbsp;<span class='chat-text'>" + "</span></ul>");					
+				lastUl = $(chatTab + ' ul').last().data('sender', messageSender);
 			}
 			$(chatTab + ' .chat-message:last .chat-text').append("<li>" + body + "</li>");
 
@@ -742,7 +750,7 @@ $(document).bind('connect', function(ev, data) {
 		} else if (status === Strophe.Status.CONNFAIL) {
 			Xpressive.log('Connection failed.');
 		} else if (status === Strophe.Status.ERROR) {
-			Xpressive.log('Connection erroreded.');
+			Xpressive.log('Connection errored.');
 		} else if (status === Strophe.Status.AUTHFAIL) {
 			Xpressive.log('Authorization failed.');
 		}

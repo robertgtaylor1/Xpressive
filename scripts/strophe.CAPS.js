@@ -1,39 +1,41 @@
 Strophe.addConnectionPlugin('caps', (function() {
-	var addFeature, conn, createCapsNode, generateVerificationString, init, propertySort, removeFeature, sendPres;
-	conn = null;
+	// public properties
+	var addFeature, createCapsNode, generateVerificationString, init, removeFeature, sendPres;
+	// local properties
+	var _connection, propertySort;
 
-	init = function(c) {
-		conn = c;
+	init = function(connection) {
+		_connection = connection;
 		Strophe.addNamespace('CAPS', "http://jabber.org/protocol/caps");
-		if (conn.disco ===
-			void 0)
+		
+		if (_connection.disco === void 0)
 			throw new Error("disco plugin required!");
-		if (b64_sha1 ===
-			void 0)
+		if (b64_sha1 === void 0)
 			throw new Error("SHA-1 library required!");
-		conn.disco.addFeature(Strophe.NS.CAPS);
-		conn.disco.addFeature(Strophe.NS.DISCO_INFO);
-		if (conn.disco._identities.length === 0) {
-			return conn.disco.addIdentity("client", "pc", "XpressiveJS 0.1", "");
+			
+		_connection.disco.addFeature(Strophe.NS.CAPS);
+		_connection.disco.addFeature(Strophe.NS.DISCO_INFO);
+		if (_connection.disco.hasIdentities) {
+			return _connection.disco.addIdentity("client", "pc", "XpressiveJS 0.1", "");
 		}
 	};
 
 	addFeature = function(feature) {
-		return conn.disco.addFeature(feature);
+		return _connection.disco.addFeature(feature);
 	};
 
 	removeFeature = function(feature) {
-		return conn.disco.removeFeature(feature);
+		return _connection.disco.removeFeature(feature);
 	};
 
 	sendPres = function() {
-		return conn.send($pres().cnode(createCapsNode().tree()));
+		return _connection.send($pres().cnode(createCapsNode().tree()));
 	};
 
 	createCapsNode = function() {
 		var node;
-		if (conn.disco._identities.length > 0) {
-			node = conn.disco._identities[0].name || "";
+		if (_connection.disco.hasIdentities) {
+			node = _connection.disco.getIdentity(0).name || "";
 		} else {
 			node = dummyId.name;
 		}
@@ -58,13 +60,13 @@ Strophe.addConnectionPlugin('caps', (function() {
 	generateVerificationString = function() {
 		var S, features, i, id, ids, k, key, ns, _i, _j, _k, _len, _len2, _len3, _ref, _ref2;
 		ids = [];
-		_ref = conn.disco._identities;
+		_ref = _connection.disco.identities;
 		for ( _i = 0, _len = _ref.length; _i < _len; _i++) {
 			i = _ref[_i];
 			ids.push(i);
 		}
 		features = [];
-		_ref2 = conn.disco._features;
+		_ref2 = _connection.disco.features;
 		for ( _j = 0, _len2 = _ref2.length; _j < _len2; _j++) {
 			k = _ref2[_j];
 			features.push(k);

@@ -1,6 +1,9 @@
-function ChatSession(to, name, resource, message) {
+function ChatSession(to, name, resource, conn, message) {
 	this.adHoc = false;
-
+	this.connection = conn;
+	this.chatstates = function () {
+		return this.connection.chatstates;
+	}
 	this.to = to;
 	this.name = name;
 	this.resource = resource;
@@ -12,11 +15,9 @@ function ChatSession(to, name, resource, message) {
 }
 
 ChatSession.prototype = {
-	connection : {},
-
 	sendMessage : function(message) {
 
-		var fullMessage = this.connection.chatstates.addActive(message).tree();
+		var fullMessage = this.chatstates().addActive(message).tree();
 
 		this.connection.send(fullMessage);
 		this.connection.flush();
@@ -30,35 +31,36 @@ ChatSession.prototype = {
 	},
 
 	endChat : function() {
-		this.connection.chatstates.sendGone(to);
+		this.chatstates().sendGone(to);
 	}
 };
 
 Strophe.addConnectionPlugin('chat', (function() {
-
-	var _connection, _chatSessions = {}, _self;
+	// these are all local variables
+	var _connection, _roster, _muc, _chatSessions;
 
 	var init = function(connection) {
 		Strophe.debug("init chat plugin");
 
-		ChatSession.prototype.connection = connection;
-
 		_connection = connection;
-		chatSessions = {};
-		_self = this;
+		_chatSessions = {};
+		_roster = {};
+		_muc = {};
 		_connection.addHandler(this.incomingMessage.bind(this), null, "message");
 	};
 
 	// called when connection status is changed
 	var statusChanged = function(status) {
 		if (status === Strophe.Status.CONNECTED) {
+			_roster = _connection.roster;
+			_muc = _connection.muc;
 			_chatSessions = {};
 		}
 	};
 
 	var chatTo = function(to) {
 		var bareJid = Strophe.getBareJidFromJid(to);
-		var contact = _connection.roster.findContact(bareJid);
+		var contact = _roster.findContact(bareJid);
 		var chatSession = {};
 		var resource = null;
 
@@ -67,7 +69,7 @@ Strophe.addConnectionPlugin('chat', (function() {
 				resource = res;
 				break;
 			}
-			chatSession = new ChatSession(contact.jid, contact.name, resource);
+			chatSession = new ChatSession(contact.jid, contact.name, resource, _connection);
 
 			//_connection.addHandler(incomingMessage.bind(chatSession), null, "message", null, bareJid, {
 			//	'matchBare' : true
@@ -81,8 +83,8 @@ Strophe.addConnectionPlugin('chat', (function() {
 	};
 
 	var joinRoomChat = function(jid) {
-		var room = _connection.muc.servers.getRoom(jid);
-		var chatSession = new ChatSession(room.roomJid, room.roomName, null);
+		var room = _muc.getRoom(jid);
+		var chatSession = new ChatSession(room.roomJid, room.roomName, null, _connection);
 
 		chatSession.isGroupChat = true;
 		Strophe.info("Start room chat: " + room.roomJid);
@@ -137,7 +139,7 @@ Strophe.addConnectionPlugin('chat', (function() {
 		var room;
 
 		if (type === "groupchat") {
-			room = _connection.muc.servers.getRoom(from);
+			room = _muc.getRoom(from);
 			if (room == null) {
 				return true;
 			}
@@ -157,14 +159,14 @@ Strophe.addConnectionPlugin('chat', (function() {
 				} else {
 					jid = Strophe.getBareJidFromJid(from);
 					// Is this someone in my roster
-					contact = _connection.roster.findContact(jid);
+					contact = _roster.findContact(jid);
 					if (contact) {
 						contactName = contact.name;
 					} else {
 						contactName = Strophe.getNodeFromJid(from)
 					}
 				}
-				chatSession = new ChatSession(jid, contactName, Strophe.getResourceFromJid(from), msg);
+				chatSession = new ChatSession(jid, contactName, Strophe.getResourceFromJid(from), _connection, msg);
 				_chatSessions[jid] = chatSession;
 
 				$(document).trigger('start_chatting', chatSession);
