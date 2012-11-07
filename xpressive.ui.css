@@ -116,11 +116,17 @@ textarea.disabled {
 
 .chat-messages {
 	height: 450px;
+	border-top: solid 2px #ddd;
 	border-bottom: solid 2px #ddd;
 	overflow: auto;
 }
 
-#chat-area input {
+.chat-topic {
+	margin-bottom: 10px;
+	width: 95%
+}
+
+.chat-input {
 	float: right;
 	margin-top: 10px;
 	width: 95%;

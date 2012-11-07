@@ -15,6 +15,15 @@ function ChatSession(to, name, resource, conn, message) {
 }
 
 ChatSession.prototype = {
+	sendTopic : function(message){
+		var fullMessage = message.tree();
+
+		this.connection.send(fullMessage);
+		this.connection.flush();
+
+		return fullMessage;		
+	},
+	
 	sendMessage : function(message) {
 
 		var fullMessage = this.chatstates().addActive(message).tree();
@@ -93,6 +102,21 @@ Strophe.addConnectionPlugin('chat', (function() {
 
 		return true;
 	};
+
+	var sendNewTopic = function(jid, topic) {
+		var message = $msg({
+				to : jid,
+				"type" : "groupchat"
+			}).c('subject').t(topic).up();
+			
+		// Find the ChatSession
+		var chatSession = _chatSessions[jid] || null;
+		if (chatSession) {
+			Strophe.info("Topic change sent to: " + jid);
+
+			message = chatSession.sendTopic(message);
+		}
+	}
 
 	var sendNewMessage = function(jid, resource, body, groupChat) {
 		var message = {};
@@ -186,6 +210,7 @@ Strophe.addConnectionPlugin('chat', (function() {
 		chatTo : chatTo,
 		joinRoomChat : joinRoomChat,
 		sendNewMessage : sendNewMessage,
+		sendNewTopic : sendNewTopic,
 		incomingMessage : incomingMessage,
 	};
 })());

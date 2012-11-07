@@ -108,7 +108,10 @@
 		var chatArea = $('#chat-area ' + chatTab)[0];
 		if (!chatArea) {
 			$('#chat-area').tabs('add', chatTab, name);
-			$(chatTab).append("<div class='chat-messages' ></div>" + "<input type='text' class='chat-input'>");
+			if (groupChat){
+				$(chatTab).append("<input type='text' class='chat-topic' />");
+			}
+			$(chatTab).append("<div class='chat-messages' ></div>" + "<input type='text' class='chat-input'/>");
 			$(chatTab).data('jid', jid);
 			$(chatTab).data('name', name);
 			$(chatTab).data('resource', resource);
@@ -158,71 +161,77 @@
 				name = $(chatTab).data('name');
 			}
 		}
-		if ($(chatTab).length === 0) {
-			$('#chat-area').tabs('add', chatTab, Strophe.getNodeFromJid(jid));
-			$(chatTab).append("<div class='chat-messages'></div>" + "<input type='text' class='chat-input'>");
-		}
-
-		$('#chat-area').tabs('select', chatTab);
-		$(chatTab + ' input').focus();
-
-		composing = $(message).find('composing');
-		if (composing.length > 0) {
-			$(chatTab + ' .chat-messages').append("<div class='chat-event'>" + name + " is typing...</div>");
-
-			Xpressive._scroll_chat(jid_id);
-		}
-		// TODO let's ignore HTML content for now
-		body = ""; //$(message).find("html > body");
-
-		if (body.length === 0) {
-			body = $(message).find('body');
-			if (body.length > 0) {
-				body = body.text()
-			} else {
-				body = null;
-			}
+		topic = $(message).find('subject');
+		if (topic.length > 0){
+			topic = topic.text();
+			$(chatTab + ' .chat-topic').val(topic);
 		} else {
-			body = body.contents();
-
-			span = $("<span></span>");
-			body.each(function() {
-				if (document.importNode) {
-					$(document.importNode(this, true)).appendTo(span);
-				} else {
-					// IE workaround
-					span.append(this.xml);
-				}
-			});
-			body = span;
-		}
-
-		if (body) {
-			// remove notifications since user is now active
-			$(chatTab + ' .chat-event').remove();
-
-			// add the new message
-			var lastUl = $(chatTab + ' ul').last();
-			var appendUl = true;
 			
-			if (lastUl.length > 0) {
-				var lastUserId = $(chatTab + ' ul').last().data('sender');
-				// if it's the same sender as the last message then don't repeat the name
-				if (lastUserId === messageSender) {
-					appendUl = false;
+			if ($(chatTab).length === 0) {
+				$('#chat-area').tabs('add', chatTab, Strophe.getNodeFromJid(jid));
+				$(chatTab).append("<div class='chat-messages'></div>" + "<input type='text' class='chat-input'/>");
+			}
+	
+			$('#chat-area').tabs('select', chatTab);
+			$(chatTab + ' input').focus();
+	
+			composing = $(message).find('composing');
+			if (composing.length > 0) {
+				$(chatTab + ' .chat-messages').append("<div class='chat-event'>" + name + " is typing...</div>");
+	
+				Xpressive._scroll_chat(jid_id);
+			}
+			// TODO let's ignore HTML content for now
+			body = ""; //$(message).find("html > body");
+	
+			if (body.length === 0) {
+				body = $(message).find('body');
+				if (body.length > 0) {
+					body = body.text()
+				} else {
+					body = null;
 				}
+			} else {
+				body = body.contents();
+	
+				span = $("<span></span>");
+				body.each(function() {
+					if (document.importNode) {
+						$(document.importNode(this, true)).appendTo(span);
+					} else {
+						// IE workaround
+						span.append(this.xml);
+					}
+				});
+				body = span;
 			}
-			if (appendUl) {
-				var thisUl = "<ul class='chat-message" + ( fromMe ? " me'" : "'" ) + ">" + "<span class='chat-name'>" + name + "</span>:&nbsp;<span class='chat-text'>" + "</span></ul>";
-				//$(thisUl).data('jidId', jid_id);
-				$(chatTab + ' .chat-messages').append("<ul class='chat-message" + ( fromMe ? " me'" : "'" ) + ">" + "<span class='chat-name'>" + name + "</span>:&nbsp;<span class='chat-text'>" + "</span></ul>");					
-				lastUl = $(chatTab + ' ul').last().data('sender', messageSender);
+	
+			if (body) {
+				// remove notifications since user is now active
+				$(chatTab + ' .chat-event').remove();
+	
+				// add the new message
+				var lastUl = $(chatTab + ' ul').last();
+				var appendUl = true;
+				
+				if (lastUl.length > 0) {
+					var lastUserId = $(chatTab + ' ul').last().data('sender');
+					// if it's the same sender as the last message then don't repeat the name
+					if (lastUserId === messageSender) {
+						appendUl = false;
+					}
+				}
+				if (appendUl) {
+					var thisUl = "<ul class='chat-message" + ( fromMe ? " me'" : "'" ) + ">" + "<span class='chat-name'>" + name + "</span>:&nbsp;<span class='chat-text'>" + "</span></ul>";
+					//$(thisUl).data('jidId', jid_id);
+					$(chatTab + ' .chat-messages').append("<ul class='chat-message" + ( fromMe ? " me'" : "'" ) + ">" + "<span class='chat-name'>" + name + "</span>:&nbsp;<span class='chat-text'>" + "</span></ul>");					
+					lastUl = $(chatTab + ' ul').last().data('sender', messageSender);
+				}
+				$(chatTab + ' .chat-message:last .chat-text').append("<li>" + body + "</li>");
+	
+				Xpressive._scroll_chat(jid_id);
 			}
-			$(chatTab + ' .chat-message:last .chat-text').append("<li>" + body + "</li>");
-
-			Xpressive._scroll_chat(jid_id);
 		}
-
 		return true;
 	},
 
@@ -623,6 +632,7 @@ $(document).ready(function() {
 		if (ev.which === 13) {
 			ev.preventDefault();
 
+			var topic = $('.chat-topic').val(); 
 			var body = $(this).val();
 			Xpressive.connection.chat.sendNewMessage(jid, resource, body, groupChat);
 
@@ -637,6 +647,20 @@ $(document).ready(function() {
 					$(this).parent().data('composing', true);
 				}
 			}
+		}
+	});
+
+	$('.chat-topic').live('keypress', function(ev) {
+		var jid = $(this).parent().data('jid');
+		var groupChat = $(this).parent().data('groupChat');
+		
+		if (ev.which === 13) {
+			ev.preventDefault();
+
+			var topic = $(this).val();
+			Xpressive.connection.chat.sendNewTopic(jid, topic);
+
+			$(this).val('');
 		}
 	});
 

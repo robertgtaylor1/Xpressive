@@ -40,6 +40,10 @@ local.properties
 *.suo
 *.user
 *.sln.docstates
+## don't want these added
+*.config
+*.csproj
+*.cs
 
 # Build results
 [Dd]ebug/
@@ -64,7 +68,7 @@ local.properties
 *.dotCover
 
 ## TODO: If you have NuGet Package Restore enabled, uncomment this
-#packages/
+packages/
 
 # Visual C++ cache files
 ipch/
