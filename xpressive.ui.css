@@ -1,9 +1,39 @@
 ﻿body {
 	font-family: Helvetica;
+	font-size: 13px;
 }
 
 h1 {
 	text-align: center;
+}
+
+ul.chat-message {
+    background-color: #DDDDDD;
+    padding-left: 30px;
+    margin-left: 0px;
+    margin-right: 3px;
+    margin-bottom: 0px;
+    margin-top: 5px;
+}
+
+.chat-message li {
+    background-color: #FFFFFF;
+ 	list-style: none;
+}
+
+.chat-message li:before {
+	/* For a round bullet */
+	/*content:'\2022';*/
+	/* For a square bullet */
+	content:'\25A0';
+	display: block;
+	position: relative;
+	max-width: 0px;
+	max-height: 0px;
+	left: -16px;
+	top: 1px;
+	color: green;
+	font-size: 10px;
 }
 
 .hidden {
@@ -109,6 +139,7 @@ textarea.disabled {
 }
 
 #chat-area {
+	font-size: 13px;
 	float: left;
 	width: 700px;
 	height: 600px;
@@ -116,20 +147,49 @@ textarea.disabled {
 
 .chat-messages {
 	height: 450px;
+	width: 100%;
 	border-top: solid 2px #ddd;
 	border-bottom: solid 2px #ddd;
+	border-left: solid 2px #ddd;
 	overflow: auto;
 }
 
+#topic-label {
+	margin-bottom: 5px;
+	margin-left: 10px;
+}
+
 .chat-topic {
-	margin-bottom: 10px;
-	width: 95%
+	margin-bottom: 5px;
+	width: 90%;
 }
 
 .chat-input {
 	float: right;
-	margin-top: 10px;
-	width: 95%;
+	margin-top: 5px;
+	width: 100%;
+}
+
+.chat-time {
+	float:right;	
+	color: #c33;
+}
+
+.chat-tooltip {
+	background: rgba(128,128,0,0.9);
+	position: fixed;
+	color: #000;
+	padding: 5px;
+	max-width: 250px;
+	-webkit-border-radius: 5px; /* Saf3+, Chrome */
+	   -moz-border-radius: 5px; /* FF1+ */
+	        border-radius: 5px; /* Opera 10.5, IE 9 */
+	text-align: center;
+	display: none;
+}
+
+.no-js li:hover .chat-tooltip {
+	display: block;
 }
 
 #roster-area, #muc-area {
@@ -141,8 +201,8 @@ textarea.disabled {
 }
 
 .chat-name {
+	font-weight: bold;
 	color: #c33;
-	font-size: 13px;
 }
 
 .chat-message {
@@ -160,7 +220,7 @@ textarea.disabled {
 
 .roster-contact, .room-entry {
 	padding: 3px;
-	font-size: 75%;
+	font-size: 80%;
 }
 
 .roster-contact:hover, .room-entry:hover {
@@ -170,7 +230,7 @@ textarea.disabled {
 
 .roster-name, .room-name {
 	font-weight: bold;
-	font-size: 100%;
+	font-size: 120%;
 }
 
 .online {
@@ -242,4 +302,8 @@ textarea.disabled {
 }
 .xml_level9 {
 	padding-left: 9em;
+}
+
+.ui-tabs div.ui-tabs-panel {
+	padding: 5px 0px 0px 0px;	
 }

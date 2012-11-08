@@ -109,7 +109,7 @@
 		if (!chatArea) {
 			$('#chat-area').tabs('add', chatTab, name);
 			if (groupChat){
-				$(chatTab).append("<input type='text' class='chat-topic' />");
+				$(chatTab).append("<span id='topic-label'>Topic : <input type='text' class='chat-topic' /></span>");
 			}
 			$(chatTab).append("<div class='chat-messages' ></div>" + "<input type='text' class='chat-input'/>");
 			$(chatTab).data('jid', jid);
@@ -130,7 +130,9 @@
 	on_message : function(message, fromMe) {
 		var jid, full_jid, jid_id, chatTab, name, resource, composing, body, span, messageSender; 
 		var	groupChat = false;
-
+		var messageTime = new Date();
+		var delay;
+		
 		if (fromMe) {
 			jid = Strophe.getBareJidFromJid(this.connection.jid);
 			Xpressive.log("Sending message to: " + jid);
@@ -161,6 +163,15 @@
 				name = $(chatTab).data('name');
 			}
 		}
+		delay = $(message).find('delay');
+		if (delay.length === 0){
+			delay = $(message).find('x');
+		}
+		if (delay.length !== 0){
+			var stamp = delay.attr('stamp');
+			messageTime = new Date(stamp);
+		}
+		
 		topic = $(message).find('subject');
 		if (topic.length > 0){
 			topic = topic.text();
@@ -221,13 +232,14 @@
 						appendUl = false;
 					}
 				}
+				var timeString = Xpressive._formatDate(messageTime, "{FullYear}-{Month:2}-{Date:2} {Hours:2}:{Minutes:2}");
 				if (appendUl) {
-					var thisUl = "<ul class='chat-message" + ( fromMe ? " me'" : "'" ) + ">" + "<span class='chat-name'>" + name + "</span>:&nbsp;<span class='chat-text'>" + "</span></ul>";
-					//$(thisUl).data('jidId', jid_id);
-					$(chatTab + ' .chat-messages').append("<ul class='chat-message" + ( fromMe ? " me'" : "'" ) + ">" + "<span class='chat-name'>" + name + "</span>:&nbsp;<span class='chat-text'>" + "</span></ul>");					
+					$(chatTab + ' .chat-messages').append("<ul class='chat-message" + ( fromMe ? " me'" : "'" ) + ">" + 
+					                                    	"<span class='chat-message-group'><span class='chat-name'>" + name + "</span>:&nbsp;<span class='chat-time'>" + timeString + 
+					                                    	"</span></span><span class='chat-text'></span></ul>");					
 					lastUl = $(chatTab + ' ul').last().data('sender', messageSender);
 				}
-				$(chatTab + ' .chat-message:last .chat-text').append("<li>" + body + "</li>");
+				$(chatTab + ' .chat-message:last .chat-text').append("<li>" + body + "<div class='chat-tooltip'>Message time : " + timeString + "</div></li>");
 	
 				Xpressive._scroll_chat(jid_id);
 			}
@@ -235,6 +247,25 @@
 		return true;
 	},
 
+	_formatDate : function (d, // Date instance
+    						f // Format string
+						   ) {
+    	return f.replace( // Replace all tokens
+	        /{(.+?)(?::(.*?))?}/g, // {<part>:<padding>}
+	        function (
+	            v, // Matched string (ignored, used as local var)
+	            c, // Date component name
+	            p // Padding amount
+	        ) {
+	            for(v = d["get" + c]() // Execute date component getter
+	                + /h/.test(c) // Increment Mont(h) components by 1
+	                + ""; // Cast to String
+	                v.length < p; // While padding needed, 
+	                v = 0 + v); // pad with zeros
+	            return v // Return padded result
+	        })	
+	},
+	
 	_scroll_chat : function(jid_id) {
 		var div = $('#chat-' + jid_id + ' .chat-messages').get(0);
 		div.scrollTop = div.scrollHeight;
@@ -605,14 +636,14 @@ $(document).ready(function() {
 		axis : 'x'
 	});
 
-	$('.roster-contact').live('click', function() {
+	$(document).on('click', '.roster-contact', function() {
 		var jid = $(this).find(".roster-jid").text();
 		var name = $(this).find(".roster-name").text();
 
 		Xpressive.connection.chat.chatTo(jid);
 	});
 
-	$('.room-entry').live('click', function() {
+	$(document).on('click', '.room-entry', function() {
 		var jid = $(this).find(".room-jid").text();
 		var name = $(this).find(".room-name").text();
 		var secure = Xpressive.connection.muc.isRoomSecure(jid);		
@@ -624,7 +655,7 @@ $(document).ready(function() {
 		$('#join_room_dialog').dialog('open');
 	});
 
-	$('.chat-input').live('keypress', function(ev) {
+	$(document).on('keypress', '.chat-input', function(ev) {
 		var jid = $(this).parent().data('jid');
 		var resource;
 		var groupChat = $(this).parent().data('groupChat');
@@ -650,7 +681,7 @@ $(document).ready(function() {
 		}
 	});
 
-	$('.chat-topic').live('keypress', function(ev) {
+	$(document).on('keypress', '.chat-topic', function(ev) {
 		var jid = $(this).parent().data('jid');
 		var groupChat = $(this).parent().data('groupChat');
 		
@@ -664,6 +695,27 @@ $(document).ready(function() {
 		}
 	});
 
+	$(document).on('mouseenter', '.chat-text li', function ( e ) {
+			var $li = $( this );
+			var $div = $li.find('div');
+			var offset = $div.offset();
+			
+			$li.doTimeout( "hoverOut" );
+			$li.doTimeout( "hoverIn", 500, function () {
+				$div.css('left', e.pageX).css('top', e.pageY);
+				$div.fadeTo( 200, 1.0 );
+			});
+	});
+	
+	$(document).on( 'mouseleave', '.chat-text li', function ( e ) {
+			var $li = $( this );
+
+			$li.doTimeout( "hoverIn" );
+			$li.doTimeout( "hoverOut", 500, function () {
+				$li.find( "div" ).stop( true ).fadeOut();
+			});
+		});
+	
 	$('#disconnect').click(function() {
 		Xpressive.connection.session.disconnect();
 	});
