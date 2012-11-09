@@ -43,7 +43,9 @@ Room.prototype = {
 		this.roomInfoResponse = iq;
 		Strophe.info("Room Description: " + this.description());
 		Strophe.info("Number Of Occupants: " + this.numberOfOccupants());
-
+		
+		// notify user code of room change
+		$(document).trigger("room_changed", this);
 	},
 
 	roomInfoError : function() {
@@ -64,12 +66,12 @@ Room.prototype = {
 	},
 
 	numberOfOccupants : function() {
-		var val = "not set";
+		var val = -1;
 		if (this.roomInfoResponse) {
 			$(this.roomInfoResponse).find('x field').each(function() {
 				if ($(this).attr('var') === "muc#roominfo_occupants") {
 					val = $(this).find('value').text();
-					return;
+					return val;
 				}
 			});
 		}
@@ -79,9 +81,10 @@ Room.prototype = {
 	join : function(nickname, password) {
 		Strophe.info("join room: " + this.roomJid);
 		
+		this.nickname = nickname;
 		var pw = (password ? password.trim() : "");
 		var presence = $pres({
-			to : this.roomJid + "/" + nickname
+			to : this.roomJid + "/" + this.nickname
 		}).c('x', {xmlns : Strophe.NS.MUC});
 		if (pw.length > 0){
 			presence.c('password', null, pw);
@@ -92,11 +95,17 @@ Room.prototype = {
 		
 		this.connection.send(presence.tree());		
 		this.connection.chat.joinRoomChat(this.roomJid);
+		this.getInfo();
 	},
 
 	leave : function() {
 		Strophe.info("leave room: " + this.roomJid);
-		// TODO
+		
+		var leaveIq = $pres({
+			to : this.roomJid + "/" + this.nickname,
+			type : 'unavailable'});
+		this.connection.send(leaveIq);
+		this.getInfo();
 	},
 
 	sendMessage : function(messageText) {
@@ -399,7 +408,8 @@ Strophe.addConnectionPlugin('muc',(function() {
 
 	leave = function(roomJid) {
 		var room = _servers.getRoom(roomJid);
-		room.nickname = null;
+		//room.nickname = null;
+		room.leave();
 	};
 
 	isRoomSecure = function(roomJid) {
@@ -426,6 +436,10 @@ Strophe.addConnectionPlugin('muc',(function() {
 		}
 		return true;
 	};
+	
+	refreshInfo = function(jid) {
+		_servers.getRoom(jid).getInfo();
+	}
 
 	getRoom = function(jid) {
 		return _servers.getRoom(jid);
@@ -443,6 +457,7 @@ Strophe.addConnectionPlugin('muc',(function() {
 		leave : leave, 
 		isRoomSecure : isRoomSecure, 
 	    getRoom : getRoom, 
-	    createRoom : createRoom
+	    createRoom : createRoom,
+	    refreshInfo : refreshInfo
 	}
 })());

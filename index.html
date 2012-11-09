@@ -32,43 +32,39 @@
 		<script type="text/javascript" src='xpressive.js'></script>
 	</head>
 	<body>
-		<h1> Xpressive XMPP Client</h1>
-		<table>
-			<tr>
-				<td>
-				<div id='toolbar'>
-					<span class='button' id='toggle-lists'>Show Rooms</span>&nbsp; 
-					<span class='button' id='away-pres'>Away</span>&nbsp; 
-					<span class='button' id='available-pres'>Available</span>&nbsp; 
-					<span class='button' id='new-contact'>Add Contact...</span>&nbsp; 
-					<span class='button' id='new-chat'>Chat with...</span>&nbsp; 
-					<span class='button' id='disconnect'>Disconnect</span>
-				</div></td>
-			</tr>
-			<tr>
-				<td>
-				<div id='chat-region'>
+		<div id="client" class='ui-widget-content'>
+			<h1 id="title" class='ui-widget-header'> Xpressive XMPP Client</h1>
+			<div id="content" class='table ui-widget-content'>
+				<div class="row" id="button-row">
+					<div id='toolbar'>
+						<span class='button' id='toggle-lists'>Show Rooms</span>&nbsp; 
+						<span class='button' id='away-pres'>Away</span>&nbsp; 
+						<span class='button' id='available-pres'>Available</span>&nbsp; 
+						<span class='button' id='new-contact'>Add Contact...</span>&nbsp; 
+						<span class='button' id='new-chat'>Chat with...</span>&nbsp; 
+						<span class='button' id='disconnect'>Disconnect</span>
+					</div>
+				</div>
+				<div id='chat-region' class="row">
 					<!-- Xmpp Roster area -->
-					<div id='roster-area'>
-						<ul>
-							Roster
-						</ul>
+					<div id='roster-area' class='ui-corner-all ui-widget-content ui-resize'>
+						<h3 class='ui-widget-header ui-corner-all ui-list' >Roster</h3>						
+						<ul></ul>						
 					</div>
 
 					<!-- Muc area -->
-					<div id='muc-area' class='hidden'>
-						<ul>
-							Servers							
-						</ul>
-					</div>
-
-					<!-- chat tabs region (includes a debug/console tab)-->
-					<div id='chat-area'>
+					<div id='muc-area' class='ui-corner-all ui-widget-content ui-resize hidden'>
+						<h3 class='ui-widget-header ui-corner-all ui-list' >Servers</h3>
 						<ul></ul>
 					</div>
-				</div></td>
-			</tr>
-		</table>
+					<div class='vertical-divider ui-resize'><span>|</span></div>
+					<!-- chat tabs region (includes a debug/console tab)-->
+					<div id='chat-area' class='ui-resize'>
+						<ul></ul>
+					</div>						
+				</div>
+			</div>
+		</div>
 		<!-- login dialog -->
 		<div id='login_dialog' class='hidden'>
 			<label> JID:</label>

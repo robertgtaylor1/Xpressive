@@ -12,7 +12,7 @@
 	},
 
 	log : function(msg) {
-		$('#console .log-messages').append("<div class='log'>" + msg + "</div>");
+		$('#console .log-messages').append("<div><span class='log'>" + msg + "</span></div>");
 	},
 
 	do_presence_changed : function(contact) {
@@ -44,19 +44,41 @@
 		Xpressive.log("Got rooms update:");
 		
 		for(var attr in server.rooms){
-			var room = server.rooms[attr];
-			var room_id = Xpressive.jid_to_id(room.roomJid);
-			
-			var room_html = "<li id='" + room_id + "'>" + 
-								"<div class='room-entry'>" + 
-									"<div class='room-name'>" + room.roomName + "</div>" +
-									//"<div class='room-description'>" + room.description() + "</div>" +
-									"<div class='room-jid'>" + room.roomJid + "</div>" +
-								"</div>" + 
-							"</li>";
-			//$(room_html).find('#' + room_id).data('secure', room.requiresPassword());
-			Xpressive.insert_room(room_id, room_html);
+			Xpressive.do_room_changed(server.rooms[attr]);
 		}
+	},
+	
+	do_room_changed: function(room){
+		var room_id = Xpressive.jid_to_id(room.roomJid);
+		var room_html = "<li id='" + room_id + "'>" + 
+							"<div class='room-entry'>" + 
+								"<div class='room-name'><span style='display:inline-block;'>" + room.roomName + "</span>";
+		
+		var numberOfOccupants = room.numberOfOccupants();
+		if  (numberOfOccupants > 0) {
+			room_html += "&nbsp;<img class='ui-icon ui-icon-person xmpp-occupantCount' style='display:inline-block; vertical-align:bottom;'/>" + 
+							"<span style='font-size:75%; vertical-align:center;'>("+ numberOfOccupants +")</span>";
+		}
+					
+		if (room.requiresPassword()) {
+			room_html += "&nbsp;<img class='ui-icon ui-icon-key xmpp-protected' style='display:inline-block; vertical-align:bottom;'/>";
+		}
+		
+		if (room.isModerator()){
+			room_html += "&nbsp;<img class='ui-icon ui-icon-person xmpp-moderator' style='display:inline-block; vertical-align:bottom;'/>";
+		}
+		
+		room_html += "<img class='ui-icon ui-icon-refresh xmpp-refresh-room' style='display:inline-block; vertical-align:bottom;'/>" +
+						"<img class='ui-icon ui-icon-play xmpp-join-room' style='display:inline-block; vertical-align:bottom;'>";
+		
+		room_html += "</div>";
+		//room_html += "<div class='room-description'>" + room.description();
+		room_html += "<div class='room-jid'>" + room.roomJid + "</div>" +
+							"</div>" + 
+						"</li>";
+		//$(room_html).find('#' + room_id).data('secure', room.requiresPassword());
+
+		Xpressive.insert_room(room_id, room_html);
 	},
 	
 	do_roster_changed : function(contactsList) {
@@ -118,9 +140,16 @@
 			if (groupChat){
 				$(chatTab).data('groupChat', groupChat);				
 			}
+			$(chatTab + ' .chat-input').position({
+				of: chatTab,
+				my: 'left botton',
+				at: 'left bottom',
+				collision: 'none'
+			});
 		}
 		$('#chat-area').tabs('select', chatTab);
 		$(chatTab + ' input').focus();
+		$('#client').trigger('resize');
 	},
 
 	on_join_room : function(jid, name) {	
@@ -314,9 +343,13 @@
 		}
 	},
 
-	insert_room : function(jid, elem) {
-		var rooms = $('#muc-area li');
-		$('#muc-area ul').append(elem);
+	insert_room : function(room_id, elem) {
+		var $room = $('#' + room_id);
+		if ($room.length === 0) {
+			$('#muc-area ul').append(elem);
+		} else {
+			$room.replaceWith(elem);
+		}
 	},
 
 	send_ping : function(to) {
@@ -353,7 +386,7 @@
 			var at_bottom = console.scrollTop >= console.scrollHeight - console.clientHeight;
 
 			$.each(body.childNodes, function() {
-				$('#console .log-messages').append("<div class='" + type + "'>" + Xpressive.pretty_xml(this) + "</div>");
+				$('#console .log-messages').append("<div><span class='" + type + "'>" + Xpressive.pretty_xml(this) + "</span></div>");
 			});
 
 			if (at_bottom) {
@@ -407,9 +440,9 @@
 				if (this.nodeType === 1) {
 					result.push(Xpressive.pretty_xml(this, level + 1));
 				} else if (this.nodeType === 3) {
-					result.push("<div class='xml_text xml_level" + (level + 1) + "'>");
+					result.push("<div class='xml_text xml_level" + (level + 1) + "'><span>");
 					result.push(this.nodeValue);
-					result.push("</div>");
+					result.push("</span></div>");
 				}
 			});
 
@@ -457,15 +490,20 @@ $(document).ready(function() {
 		'resizable' : true, //Default false
 		'resizeHandles' : 'e,s,se', //Default 'e,s,se'
 		'easing' : 'easeInOutExpo', //Default 'swing'
-		'event' : 'mouseover',
+		//'event' : 'mouseover',
 		'closableClick' : function(ev, data) {
 			if (data.panel.id === "console") {
 				return false;
 			}
+			// leave chat
+			var jid = $('#' + data.panel.id).data('jid');
+			Xpressive.connection.chat.endSession(jid);
 			return true;	
 		}
 	});
-
+	
+	$('#client').resizable();
+	
 	$('#login_dialog').dialog({
 		autoOpen : true,
 		dragable : false,
@@ -643,7 +681,7 @@ $(document).ready(function() {
 		Xpressive.connection.chat.chatTo(jid);
 	});
 
-	$(document).on('click', '.room-entry', function() {
+/*	$(document).on('click', '.room-entry', function() {
 		var jid = $(this).find(".room-jid").text();
 		var name = $(this).find(".room-name").text();
 		var secure = Xpressive.connection.muc.isRoomSecure(jid);		
@@ -653,6 +691,25 @@ $(document).ready(function() {
 										'secure' : secure, 
 										'jid' : jid });
 		$('#join_room_dialog').dialog('open');
+	});
+*/
+	$(document).on('click', '.xmpp-join-room', function() {
+		var $li = $(this).parents('li');
+		var jid = $li.find(".room-jid").text();
+		var name = $li.find(".room-name").text();
+		var secure = Xpressive.connection.muc.isRoomSecure(jid);		
+		var title = "Join: " + name;
+		
+		$('#join_room_dialog').dialog({ 'title' : title, 
+										'secure' : secure, 
+										'jid' : jid });
+		$('#join_room_dialog').dialog('open');
+	});
+
+	$(document).on('click', '.xmpp-refresh-room', function() {
+		var $li = $(this).parents('li');
+		var jid = $li.find(".room-jid").text();
+		Xpressive.connection.muc.refreshInfo(jid);
 	});
 
 	$(document).on('keypress', '.chat-input', function(ev) {
@@ -728,7 +785,7 @@ $(document).ready(function() {
 		Xpressive.connection.me.away();
 	});
 
-	$('#toggle-lists').click(function() {
+	$('#toggle-lists, .ui-list').click(function() {
 		$('#toggle-lists').text('Show ' + listShowing);
 		if (listShowing === "Contacts") {
 			$('#roster-area').addClass('hidden');
@@ -780,6 +837,37 @@ $(document).ready(function() {
 		});
 	});
 
+	function doResize() {
+		var newH = $(this).height();
+		$('.ui-resize').each(
+			function() {
+				$(this).height(newH - 84);
+			}
+		);
+		$('.chat-messages').each(
+			function() {
+				var groupChat = $(this).parent().data('groupChat');
+				$(this).height(newH - 84 - (groupChat === true ? 97 : 70));
+			}
+		);		
+		$('.log-messages').each(
+			function() {
+				$(this).height(newH - 84 - 45);	
+			}
+		);
+		var newW = $('#chat-area').width();
+		$('.chat-input').each(
+			function() {
+				$(this).width(newW - 5);		
+		});
+		$('.chat-topic').each(
+			function() {
+				$(this).width(newW - 80);		
+		});
+	};
+	
+	$('.ui-resizable').resize(doResize);	
+
 	Strophe.log = function(loglevel, message) {
 		var level = "CUSTOM";
 		switch (loglevel) {
@@ -799,7 +887,6 @@ $(document).ready(function() {
 				level = "FATAL";
 				break;
 		};
-
 		Xpressive.log(level + ": " + message);
 	};
 });
@@ -835,6 +922,8 @@ $(document).bind('connect', function(ev, data) {
 
 	$('#chat-area').tabs('add', '#console', "Debug");
 	$('#console').append("<div class='log-messages' ></div>");
+		
+	$('#client').trigger('resize');
 });
 
 $(document).bind('on_connected', function() {
@@ -871,6 +960,12 @@ $(document).bind('rooms_changed', function(ev, data) {
 	Xpressive.log("Rooms Changed Event.");
 
 	Xpressive.do_rooms_changed(data);
+});
+
+$(document).bind('room_changed', function(ev, data) {
+	Xpressive.log("Room Changed Event.");
+
+	Xpressive.do_room_changed(data);
 });
 
 $(document).bind('presence_changed', function(ev, data) {

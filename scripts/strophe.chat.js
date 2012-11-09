@@ -40,7 +40,11 @@ ChatSession.prototype = {
 	},
 
 	endChat : function() {
-		this.chatstates().sendGone(to);
+		if (this.isGroupChat){
+			this.connection.muc.leave(this.to);
+		} else {			
+			this.chatstates().sendGone(to);
+		}
 	}
 };
 
@@ -204,6 +208,11 @@ Strophe.addConnectionPlugin('chat', (function() {
 		return true;
 	};
 
+	var endSession = function(jid) {
+		var session = _chatSessions[jid];
+		session.endChat();
+	};
+	
 	return {
 		init : init,
 		statusChanged : statusChanged,
@@ -212,5 +221,6 @@ Strophe.addConnectionPlugin('chat', (function() {
 		sendNewMessage : sendNewMessage,
 		sendNewTopic : sendNewTopic,
 		incomingMessage : incomingMessage,
+		endSession : endSession
 	};
 })());

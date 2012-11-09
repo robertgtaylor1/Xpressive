@@ -5,6 +5,7 @@
 
 h1 {
 	text-align: center;
+	margin: 0;
 }
 
 ul.chat-message {
@@ -14,6 +15,23 @@ ul.chat-message {
     margin-right: 3px;
     margin-bottom: 0px;
     margin-top: 5px;
+}
+
+/* THIS DON'T WORK!!
+.xmpp-refresh,
+.xmpp-protected,
+.xmpp-moderator,
+.xmpp-occupantCount {
+	display: inline-block;
+	vertical-align: bottom;
+}
+*/
+.table {
+    display: table;
+}
+
+.row {
+    display: table-row;
 }
 
 .chat-message li {
@@ -36,8 +54,37 @@ ul.chat-message {
 	font-size: 10px;
 }
 
+#muc-area li,
+#roster-area li {
+	list-style: none;
+}
+
+#muc-area ul,
+#roster-area ul {
+	padding-left: 20px;
+}
+
+#muc-area li:before,
+#roster-area li:before  {
+	content:'\2022';
+	display: block;
+	position: relative;
+	max-width: 0px;
+	max-height: 0px;
+	left: -15px;
+	top: -6px;
+	font-size: 30px;
+	color: green;	
+}
+
 .hidden {
 	display: none;
+}
+
+#content {
+	height: auto;
+	width: 100%;
+	border: none;
 }
 
 #login_dialog {
@@ -48,21 +95,11 @@ ul.chat-message {
 	padding: 10px;
 }
 
-#console {
-	float: left;
-	height: 500px;
-	width: 660px;
-	border: solid 1px #aaa;
-	background-color: #000;
-	color: #eee;
-	font-family: monospace;
-	overflow: auto;
-}
-
 #input {
 	width: 100%;
 	height: 100px;
 	font-family: monospace;
+	vertical-align: bottom;
 }
 
 .incoming {
@@ -71,7 +108,7 @@ ul.chat-message {
 
 .log {
 	background-color: #CCCCCC;
-	color: #000000
+	color: #000000;
 }
 
 textarea.disabled {
@@ -82,13 +119,18 @@ textarea.disabled {
 	margin: 10px;
 }
 
-#disconnect {
-	width: 100px;
-}
-
 #send_button {
 	float: right;
 	width: 100px;
+}
+
+.vertical-divider {
+	float: left;
+	width: 5px;
+	height: 100%;
+	background-color: #FFEE55;
+	text-align: center;
+	vertical-align: middle;
 }
 
 .button {
@@ -102,7 +144,7 @@ textarea.disabled {
 	line-height: 1;
 	font-size: 13px;
 	font-weight: normal;
-	padding: 6px 16px;
+	padding: 6px 6px;
 	border-radius: 4px;
 	background-color: #f3f3f3;
 	background-image: -moz-linear-gradient(top, #ffffff, #e1e1e1);
@@ -117,9 +159,11 @@ textarea.disabled {
 	border-right: 1px solid #d2d2d2;
 	border-bottom-color: #a9a9a9;
 	box-shadow: 0 1px 0 rgba(0, 0, 0, 0.15), inset 0 1px 1px 0 rgba(255, 255, 255, 0.6);
-	text-shadow: 0 1px 0px #ffffff;}
+	text-shadow: 0 1px 0px #ffffff;
+}
 
-.button, .button:hover {
+.button, 
+.button:hover {
 	color: #000;
 }
 
@@ -134,29 +178,81 @@ textarea.disabled {
 
 #toolbar {
 	float: right;
-	text-align: center;
-	margin-bottom: 15px;
+	margin-top: 5px;
+	margin-bottom: 5px;
+	margin-right: 5px;
+	width: auto;
+}
+
+#client {
+	width: 1000px;
+	height: 733px;
+	min-height: 250px;
+}
+
+#chat-region {
+	vertical-align: top;
+}
+
+#roster-area, 
+#muc-area {
+	width: 25%;
+	margin: 0px;
+	padding: 2px;
+}
+
+#roster-area ul, 
+#muc-area ul {
+	overflow-y: auto;
+	overflow-x: hidden;
+}
+
+#roster-area h3, 
+#muc-area h3 { 
+	text-align: center; 
+	margin: 0; 
+	padding: 0;
 }
 
 #chat-area {
-	font-size: 13px;
+	font-size: 13px;	
+	width: 70%;
+}
+
+#chat-area,
+#roster-area, 
+#muc-area {
+	height: 640px;
 	float: left;
-	width: 700px;
-	height: 600px;
 }
 
 .chat-messages {
-	height: 450px;
+	height: 95%;
 	width: 100%;
 	border-top: solid 2px #ddd;
 	border-bottom: solid 2px #ddd;
 	border-left: solid 2px #ddd;
-	overflow: auto;
+	overflow-y: auto;
+	overflow-x: hidden;
+}
+
+.log-messages {
+	height: 95%;
+	width: 100%;
+	max-width: 700px;
+	max-height: 650px;
+	border: solid 1px #aaa;
+	background-color: #000;
+	color: #eee;
+	font-family: monospace;
+	overflow-y: auto;
+	overflow-x: auto;
 }
 
 #topic-label {
 	margin-bottom: 5px;
 	margin-left: 10px;
+	vertical-align: top;
 }
 
 .chat-topic {
@@ -165,9 +261,11 @@ textarea.disabled {
 }
 
 .chat-input {
-	float: right;
-	margin-top: 5px;
+	float: left;
+	margin-top: 2px;
+	margin-left: 2px;
 	width: 100%;
+	position: static;
 }
 
 .chat-time {
@@ -194,10 +292,6 @@ textarea.disabled {
 
 #roster-area, #muc-area {
 	float: left;
-	border-left: solid 2px #ddd;
-	padding: 10px;
-	width: 250px;
-	height: 300px;
 }
 
 .chat-name {
@@ -223,7 +317,8 @@ textarea.disabled {
 	font-size: 80%;
 }
 
-.roster-contact:hover, .room-entry:hover {
+/*.room-entry:hover*/
+.roster-contact:hover {
 	background-color: #aaa;
 	color: white;
 }
