@@ -16,6 +16,10 @@
 	},
 
 	do_presence_changed : function(contact) {
+		if (contact === undefined){
+			return true;
+		}
+		
 		var show = "online";
 		var jid_id = Xpressive.jid_to_id(contact.jid);
 
@@ -40,6 +44,11 @@
 		return true;
 	},
 
+	do_ask_subscription : function(jid) {
+		$('#approve_dialog').dialog('options', 'jid', jid);
+		$('#approve_dialog').dialog('open');
+	},
+	
 	do_rooms_changed : function(server) {
 		Xpressive.log("Got rooms update:");
 		
@@ -56,20 +65,25 @@
 		
 		var numberOfOccupants = room.numberOfOccupants();
 		if  (numberOfOccupants > 0) {
-			room_html += "&nbsp;<img class='ui-icon ui-icon-person xmpp-occupantCount' style='display:inline-block; vertical-align:bottom;'/>" + 
+			room_html += "&nbsp;<img class='ui-icon ui-icon-person xmpp-occupantCount' style='display:inline-block; vertical-align:bottom;'/>" +
+							"<div class='tooltip'>Number of occupants</div>" + 
 							"<span style='font-size:75%; vertical-align:center;'>("+ numberOfOccupants +")</span>";
 		}
 					
 		if (room.requiresPassword()) {
-			room_html += "&nbsp;<img class='ui-icon ui-icon-key xmpp-protected' style='display:inline-block; vertical-align:bottom;'/>";
+			room_html += "&nbsp;<img class='ui-icon ui-icon-key xmpp-protected' style='display:inline-block; vertical-align:bottom;'/>" +
+							"<div class='tooltip'>Password required</div>";
 		}
 		
 		if (room.isModerator()){
-			room_html += "&nbsp;<img class='ui-icon ui-icon-person xmpp-moderator' style='display:inline-block; vertical-align:bottom;'/>";
+			room_html += "&nbsp;<img class='ui-icon ui-icon-person xmpp-moderator' style='display:inline-block; vertical-align:bottom;'/>" +
+							"<div class='tooltip'>You are a moderator</div>";
 		}
 		
 		room_html += "<img class='ui-icon ui-icon-refresh xmpp-refresh-room' style='display:inline-block; vertical-align:bottom;'/>" +
-						"<img class='ui-icon ui-icon-play xmpp-join-room' style='display:inline-block; vertical-align:bottom;'>";
+						"<div class='tooltip'>Click to refresh info</div>" +
+					 "<img class='ui-icon ui-icon-play xmpp-join-room' style='display:inline-block; vertical-align:bottom;'/>" +
+						"<div class='tooltip'>Click to join</div>";
 		
 		room_html += "</div>";
 		//room_html += "<div class='room-description'>" + room.description();
@@ -84,11 +98,12 @@
 	do_roster_changed : function(contactsList) {
 		Xpressive.log("Got roster update:");
 
-		for (var jid in contactsList.list) {
-			var contact = contactsList.list[jid];
+		for (var jid in contactsList) {
+			var contact = contactsList[jid];
 			var sub = contact.subscription;
 			var jid = contact.jid;
 			var name = contact.name || Strophe.getNodeFromJid(jid);
+			var groups = contact.getGroups();
 			var jid_id = Xpressive.jid_to_id(jid);
 
 			Xpressive.log("    jid: " + jid + "[" + sub + "]");
@@ -98,18 +113,45 @@
 				$('#' + jid_id).remove();
 			} else {
 				// contact is being added or modified
+				var show = "online";
+				if (contact.online()) {
+					for( resource in contact.resources) {
+						show = contact.resources[resource].show || "online";
+						break;
+					}
+				} else {
+					show = "offline";
+				}
+				var contact_entry = '#' + jid_id;
 				var contact_html = "<li id='" + jid_id + "'>" + 
-										"<div class='" + ($('#' + jid_id).attr('class') || "roster-contact offline") + "'>" + 
-											"<div class='roster-name'>" + name + "</div>" +
-											"<div class='roster-jid'>" + jid + "</div>" +
-										"</div>" +
-									"</li>";
+										"<div class='roster-contact " + show + "'>" + 
+											"<div class='roster-name' style='display:inline-block;'>" + name + "</div>";
+				
+				if (contact.subscription !== "both") {
+					contact_html += 	"&nbsp;<img class='ui-icon ui-icon-lightbulb xmpp-change-details' " +
+											"style='display:inline-block; vertical-align:bottom;'/>" +
+										"<div class='tooltip'>Subscription pending.</div>";
+				}											
+				contact_html += 	"&nbsp;<img class='ui-icon ui-icon-pencil xmpp-change-details' " +
+											"style='display:inline-block; vertical-align:bottom;'/>" +
+										"<div class='tooltip'>Modify details.</div>" +
+									"&nbsp;<img class='ui-icon ui-icon-close xmpp-remove-contact' " +
+											"style='display:inline-block; vertical-align:bottom;'/>" +
+										"<div class='tooltip'>Remove contact</div>" +
+									"&nbsp;<img class='ui-icon ui-icon-play xmpp-chat-to' " +
+											"style='display:inline-block; vertical-align:bottom;'/>" +
+										"<div class='tooltip'>Start chat</div>" +
+									"<div class='roster-jid'>" + jid + "</div>" +
+									"<div class'roster-groups'>Groups: " + groups + "</div>" +
+								"</div>" +
+								"</li>";
 
-				if ($('#' + jid_id).length > 0) {
-					$('#' + jid_id).replaceWith(contact_html);
+				if ($(contact_entry).length > 0) {
+					$(contact_entry).replaceWith(contact_html);
 				} else {
 					Xpressive.insert_contact(jid_id, contact_html);
 				}
+				//TODO $(contact_entry).data('jid', jid);
 			}
 		};
 
@@ -163,24 +205,21 @@
 		var delay;
 		
 		if (fromMe) {
-			jid = Strophe.getBareJidFromJid(this.connection.jid);
+			messageSender = Xpressive.connection.me.jid;
+			jid = Strophe.getBareJidFromJid($(message).attr('to'));
 			Xpressive.log("Sending message to: " + jid);
 			name = "Me";
 		} else {
 			full_jid = $(message).attr('from');
 			jid = Strophe.getBareJidFromJid(full_jid);
 			Xpressive.log("Got message from: " + jid);
+			messageSender = (groupChat ? full_jid : jid);
 		}
+		
 		jid_id = Xpressive.jid_to_id(jid);
 		chatTab = '#chat-' + jid_id;
 		groupChat = $(chatTab).data('groupChat') || false;
 		
-		if (groupChat){
-			messageSender = Xpressive.occupantJid_to_id(full_jid);
-		} else {
-			messageSender = Xpressive.jid_to_id(jid);
-		}
-				
 		if (!fromMe) {
 			if (groupChat){
 				name = Strophe.getResourceFromJid($(message).attr('from'));
@@ -287,7 +326,7 @@
 	            p // Padding amount
 	        ) {
 	            for(v = d["get" + c]() // Execute date component getter
-	                + /h/.test(c) // Increment Mont(h) components by 1
+	                + /h/.test(c) // Increment Month components by 1
 	                + ""; // Cast to String
 	                v.length < p; // While padding needed, 
 	                v = 0 + v); // pad with zeros
@@ -537,31 +576,61 @@ $(document).ready(function() {
 		autoOpen : false,
 		dragable : false,
 		modal : true,
-		title : 'Add a Contact',
-		buttons : {
-			"Add" : function() {
-				$(document).trigger('contact_added', {
-					jid : $('#contact-jid').val(),
-					name : $('#contact-name').val()
-				});
-
-				$('#contact-jid').val('');
-				$('#contact-name').val('');
-
-				$(this).dialog('close');
-			}
-		},
 		open : function() {
+			var $dlg = $('#contact_dialog');
+			var _buttons = {};
+			var _oper = $dlg.dialog('option', 'type');
+			var jid = $dlg.dialog('option', 'jid');
+			
+			$('#contact-jid').val(jid).removeAttr('disabled');
+			$('#contact-groups, #group-label').removeClass('hidden');
+			
+			if (_oper === "add") {
+				$('#contact-name').removeAttr('disabled');
+				$('#contact-groups').removeAttr('disabled');
+				_buttons["Add"] = function() {
+					var jid = $('#contact-jid').val();
+					if (jid.length > 0) {
+						Xpressive.connection.roster.addContact( jid, $('#contact-name').val(), $('#contact-groups').val());
+		
+						$('#contact-jid').val('');
+						$('#contact-name').val('');
+						$('#contact-groups').val('');
+		
+						$(this).dialog('close');
+					};
+				}
+			} else if (_oper === "update") {
+				$('#contact-jid').attr('disabled', 'true');
+				$('#contact-name').val($(this).dialog('option', 'name')).focus();
+				var groups = $(this).dialog('option', 'groups');
+				$('#contact-groups').val((groups === "none" ? "" : groups));
+				
+				_buttons["Modify"] = function() {
+					var _groups = $('#contact-groups').val().split(/[ ,]+/);
+					var newGroups = _groups.join(" ");
+					
+					Xpressive.connection.roster.modifyContact( jid, $('#contact-name').val(), newGroups);
+					$(this).dialog('close');
+				};				
+			} else if (_oper === "remove") {
+				$('#contact-jid').attr('disabled', 'true');
+				$('#contact-name').val($(this).dialog('option', 'name')).attr('disabled', 'true');
+				$('#contact-groups, #group-label').addClass('hidden');
+				
+				_buttons["Remove"] = function() {
+					Xpressive.connection.roster.deleteContact( jid);				
+					$(this).dialog('close');
+				};				
+			}
+			$dlg.dialog('option', 'buttons', _buttons);
+			
 			$("#contact_dialog").keypress(function(e) {
 				if (e.keyCode == $.ui.keyCode.ENTER) {
-					$(this).parent().find("button:eq(0)").trigger("click");
+					$(this).parent().find("button:eq(0)").trigger("click");			
 				}
 			});
 		}
-	});
-
-	$('#new-contact').click(function(ev) {
-		$('#contact_dialog').dialog('open');
 	});
 
 	$('#approve_dialog').dialog({
@@ -572,31 +641,30 @@ $(document).ready(function() {
 		buttons : {
 			"Deny" : function() {
 				Xpressive.connection.send($pres({
-					to : Xpressive.pending_subscriber,
+					to : $(this).dialog('options', 'jid'),
 					"type" : "unsubscribed"
 				}).tree());
-				Xpressive.pending_subscriber = null;
 
 				$(this).dialog('close');
 			},
 
 			"Approve" : function() {
 				Xpressive.connection.send($pres({
-					to : Xpressive.pending_subscriber,
+					to : $(this).dialog('options', 'jid'),
 					"type" : "subscribed"
 				}).tree());
 
+				// This contact is not on my roster so request subscription				  
 				Xpressive.connection.send($pres({
-					to : Xpressive.pending_subscriber,
+					to : $(this).dialog('options', 'jid'),
 					"type" : "subscribe"
 				}).tree());
-
-				Xpressive.pending_subscriber = null;
-
+				
 				$(this).dialog('close');
 			}
 		},
 		open : function() {
+			$("approve_jid").val($(this).dialog('options', 'jid'));
 			$("#approve_dialog").keypress(function(e) {
 				if (e.keyCode == $.ui.keyCode.ENTER) {
 					$(this).parent().find("button:eq(1)").trigger("click");
@@ -646,7 +714,7 @@ $(document).ready(function() {
 				if (nick.length === 0 || (this.passwordRequired && password.length === 0 )) {					
 					return;
 				}				
-				Xpressive.connection.muc.join(jid, nick, password);
+				Xpressive.Connection.muc.join(jid, nick, password);
 
 				$(this).dialog('close');
 			}
@@ -666,7 +734,7 @@ $(document).ready(function() {
 		}
 	});
 
-	$('#new-chat').click(function() {
+	$(document).on('click', '.xmpp-chat-to-dlg', function() {
 		$('#chat_dialog').dialog('open');
 	});
 
@@ -674,13 +742,13 @@ $(document).ready(function() {
 		axis : 'x'
 	});
 
-	$(document).on('click', '.roster-contact', function() {
+/*	$(document).on('click', '.roster-contact', function() {
 		var jid = $(this).find(".roster-jid").text();
 		var name = $(this).find(".roster-name").text();
 
 		Xpressive.connection.chat.chatTo(jid);
 	});
-
+*/
 /*	$(document).on('click', '.room-entry', function() {
 		var jid = $(this).find(".room-jid").text();
 		var name = $(this).find(".room-name").text();
@@ -693,6 +761,32 @@ $(document).ready(function() {
 		$('#join_room_dialog').dialog('open');
 	});
 */
+	$(document).on('click', '.xmpp-change-details', function() {
+		
+		var $li = $(this).parents('li');
+		var jid = $li.find('div .roster-jid').text();
+
+		var contact = Xpressive.connection.roster.findContact(jid);
+		$(document).trigger('modify_contact_details', contact);
+	});
+	
+	$(document).on('click', '.xmpp-remove-contact', function() {
+		
+		var $li = $(this).parents('li');
+		var jid = $li.find('div .roster-jid').text();
+		
+		var contact = Xpressive.connection.roster.findContact(jid);
+		$(document).trigger('remove_contact', contact);
+	});
+	
+	$(document).on('click', '.xmpp-chat-to', function() {
+		
+		var $li = $(this).parents('li');
+		var jid = $li.find('div .roster-jid').text();
+
+		Xpressive.connection.roster.chatTo(jid);
+	});
+	
 	$(document).on('click', '.xmpp-join-room', function() {
 		var $li = $(this).parents('li');
 		var jid = $li.find(".room-jid").text();
@@ -770,6 +864,27 @@ $(document).ready(function() {
 			$li.doTimeout( "hoverIn" );
 			$li.doTimeout( "hoverOut", 500, function () {
 				$li.find( "div" ).stop( true ).fadeOut();
+			});
+		});
+	
+	$(document).on('mouseenter', 'img', function ( e ) {
+			var $img = $( this );
+			var $div = $img.next('div');
+			var offset = $div.offset();
+			
+			$img.doTimeout( "hoverOut" );
+			$img.doTimeout( "hoverIn", 500, function () {
+				$div.css('left', e.pageX).css('top', e.pageY);
+				$div.fadeTo( 200, 1.0 );
+			});
+	});
+	
+	$(document).on( 'mouseleave', 'img', function ( e ) {
+			var $img = $( this );
+
+			$img.doTimeout( "hoverIn" );
+			$img.doTimeout( "hoverOut", 500, function () {
+				$img.next( "div" ).stop( true ).fadeOut();
 			});
 		});
 	
@@ -868,6 +983,30 @@ $(document).ready(function() {
 	
 	$('.ui-resizable').resize(doResize);	
 
+	$("#filter").val("Filter...").addClass("empty");
+	
+	// When you click on #filter
+	$("#filter").focus(function(){
+		
+		// If the value is equal to "Filter..."
+		if($(this).val() === "Filter...") {
+			// remove all the text and the class of .empty
+			$(this).val("").removeClass("empty");;
+		}
+		
+	});
+	
+	// When the focus on #filter is lost
+	$("#filter").blur(function(){
+		
+		// If the input field is empty
+		if($(this).val() === "") {
+			// Add the text "Filter..." and a class of .empty
+			$(this).val("Filter...").addClass("empty");	
+		}
+		
+	});
+
 	Strophe.log = function(loglevel, message) {
 		var level = "CUSTOM";
 		switch (loglevel) {
@@ -940,8 +1079,6 @@ $(document).bind('on_disconnected', function() {
 	// remove dead connection object
 	Xpressive.connection = null;
 
-	Xpressive.pending_subscriber = null;
-
 	$('#roster-area ul').empty();
 	$('#muc-area ul').empty();
 	$('#chat-area ul').empty();
@@ -974,6 +1111,12 @@ $(document).bind('presence_changed', function(ev, data) {
 	Xpressive.do_presence_changed(data);
 });
 
+$(document).bind('ask_subscription', function(ev, data) {
+	Xpressive.log("Subscription Request Event.");
+	
+	Xpressive.do_ask_subscription(data);
+});
+
 $(document).bind('start_chatting', function(ev, data) {
 	var chatSession = data;
 	Xpressive.on_start_chat(chatSession.to, chatSession.name, chatSession.isGroupChat);
@@ -988,4 +1131,45 @@ $(document).bind('new_chat_message', function(ev, data) {
 	var message = data.message;
 	var fromMe = data.fromMe;
 	Xpressive.on_message(message, fromMe);
+});
+
+//$(document).bind('add_new_contact', function(ev, data) {
+//	var contact = data;
+
+$(document).on('click', '.xmpp-add-contact', function() {
+	$('#contact_dialog').dialog({ 'title' : "Add New Contact",
+								  'jid' : "@taylor-home.com", 
+								  'name' : "", 
+								  'groups' : "", 
+								  'type' : "add" });
+	$('#contact_dialog').dialog('open');
+});
+
+$(document).bind('remove_contact', function(ev, data) {
+	var contact = data;
+	
+	
+	$('#contact_dialog').dialog({ 'title' : "Confirm Remove Contact",
+									'jid' : contact.jid, 
+									'name' : contact.name, 
+									'groups' : contact.getGroups(),
+									'type' : 'remove' });
+	$('#contact_dialog').dialog('open');
+});
+
+$(document).bind('modify_contact_details', function(ev, data) {
+	var contact = data;
+	
+	$('#contact_dialog').dialog({ 'title' : "Modify Contact Details",
+									'jid' : contact.jid, 
+									'name' : contact.name, 
+									'groups' : contact.getGroups(),
+									'type' : 'update' });
+	$('#contact_dialog').dialog('open');
+});
+
+$(document).bind('status_changed', function(ev, details) {
+	if (details.jid.length > 0)
+		$('#my-jid').text("[" + Strophe.getBareJidFromJid(details.jid) + "]");
+	$('#my-status').removeClass().addClass(details.status);
 });

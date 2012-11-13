@@ -1,14 +1,29 @@
 // Contact object
-function Contact(jid) {
-	this.jid = jid;
+function Contact(item) {
+	var $item = item;
+	this.jid = $item.attr('jid');
 
 	Strophe.debug("Contact created for: " + jid)
 
-	this.name = "";
+	this.item = $item;
+	
+	this.name = $item.attr('name');
+	if (this.name === undefined){
+		 this.name = Strophe.getNodeFromJid(this.jid);
+	}
 	this.resources = {};
-	this.subscription = "none";
-	this.ask = "";
-	this.groups = [];
+	this.subscription = $item.attr('subscription');
+	if (this.subscription === undefined) {
+		 this.subscription = "none";
+	}
+	this.ask = $item.attr('ask');
+	if (this.ask === undefined) {
+		 this.ask = "";
+	}
+	this.groups = $item.find('group');
+	if (this.groups === undefined) {
+		 this.groups = {};
+	}
 	this.vCard = {};
 	this.chatSession = null;
 }
@@ -27,7 +42,27 @@ Contact.prototype = {
 
 	chatTo : function() {
 		// create a new Chat session
-		this.chatSession = Strophe.chat.chatTo(jid);
+		this.chatSession = Xpressive.connection.chat.chatTo(this);
+	},
+
+	update : function(item) {
+		this.item = item;
+		var _name = item.attr('name');
+		if (_name !== undefined) {
+			this.name = _name;
+		}
+		var _subscription = $item.attr('subscripton');
+		if (_subscription !== undefined){
+		 	this.subscription = _subscription;
+		}
+		var _ask = $item.attr('ask');
+		if (_ask !== undefined){
+		 	this.ask = _ask;
+		}
+		var _groups = $item.find('group');
+		if (_groups !== undefined){
+		 	this.groups = _groups;
+		}
 	},
 
 	endChat : function() {
@@ -37,15 +72,26 @@ Contact.prototype = {
 			xmlns : Strophe.NS.CHATSTATES
 		});
 
-		Strophe.connection.send(message);
+		Xpressive.connection.send(message);
 	},
 
 	changeName : function(newName) {
-
+		//TODO:
 	},
 
 	getVCard : function() {
+		//TODO:
+	},
 
+	getGroups : function() {
+		var _list = [];
+		if (this.groups.length === 0){
+			return "none";
+		}
+		this.groups.each(function(){
+			_list.push(this.textContent);
+		})
+		return _list.join(", ");		
 	},
 
 	toString : function() {
@@ -65,28 +111,32 @@ Contacts.prototype = {
 		var item = $(iq).find('item');
 		var jid = item.attr('jid');
 		var subscription = item.attr('subscription') || "";
-
+		var ask = item.attr('ask') || "";
+		var contact = {};
+		
 		if (subscription === "remove") {
 			// removing contact from roster
+			$(document).trigger("roster_changed", { jid : item });
 			delete this.list[jid];
+			return true;
 		} else if (subscription === "none") {
 			// adding contact to roster
-			var contact = new Contact(jid);
-			contact.name = item.attr('name') || "";
-			item.find("group").each(function() {
-				contact.groups.push(this.text());
-			});
-			this.list[jid] = contact;
+			if (ask === "") {
+				contact = new Contact(item);
+				this.list[jid] = contact;
+				// send a presence(type=subscribe)
+				this.conn.send($pres({
+					to : jid,
+					type: 'subscribe',
+				}).tree());
+			} else if (ask === "subscribe"){
+				contact = this.list[jid];
+				contact.update(item);
+			}
 		} else {
 			// modifying contact on roster
-			var contact = this.list[jid];
-			contact.name = item.attr('name') || contact.name;
-			contact.subscription = subscription || contact.subscription;
-			contact.ask = item.attr('ask') || contact.ask;
-			contact.groups = [];
-			item.find("group").each(function() {
-				contact.groups.push(this.text());
-			});
+			contact = this.list[jid];
+			contact.update(item);
 		}
 		// TODO : look at this. It could be handled by an event (trigger)
 		// acknowledge receipt
@@ -96,33 +146,47 @@ Contacts.prototype = {
 		}).tree());
 
 		// notify user code of roster changes
-		$(document).trigger("roster_changed", _this);
-
+		$(document).trigger("roster_changed", this.list);
+		 
 		return true;
 	},
 
 	// called when presence stanzas are received
 	presenceChanged : function(presence) {
 		var from = $(presence).attr("from");
-		var jid = Strophe.getBareJidFromJid(from);
+		var jid = Strophe.getBareJidFromJid(from);		
+
+		if (jid === this.conn.me.myJid()) {
+			// It's my presence so ignore it
+			return true;
+		}
+		
 		var resource = Strophe.getResourceFromJid(from);
 		var ptype = $(presence).attr("type") || $(presence).find("show").text() || "available";
 
 		Strophe.info("presence change for: " + from + " [" + ptype + "]");
 
-		if (!this.list[jid] || ptype === "error") {
-			// ignore presence updates from things not on the roster
-			// as well as error presence
+		if (ptype === "error") {
+			//TODO: ignore error presence for now
 			return true;
 		}
-
-		if (ptype === "unavailable") {
+		if (!this.list[jid]) {
+			// This is someone we don't have on our roster so pop-up the dialog
+			if (ptype === "subscribe") {
+				$(document).trigger("ask_subscription", jid);
+			}			
+		} else if (ptype === "unavailable") {
 			// remove resource, contact went offline
 			try {
 				delete this.list[jid].resources[resource];
-			} catch (e) {
-			}
-		} else {
+			} catch (e) { }
+		} else if (ptype === "subscribe") {
+			// this is someone we know about so accept request
+			Xpressive.connection.send($pres({
+				to : jid,
+				type : "subscribed"
+			}).tree());
+		} else {		
 			// contact came online or changed status
 			this.list[jid].resources[resource] = {
 				show : $(presence).find("show").text() || "online",
@@ -173,19 +237,13 @@ Strophe.addConnectionPlugin('roster', (function() {
 
 				$(iq).find("item").each(function() {
 					// build a new contact and add it to the roster
-					contact = new Contact($(this).attr('jid'));
-					contact.name = $(this).attr('name') || "";
-					contact.subscription = $(this).attr('subscription') || "none";
-					contact.ask = $(this).attr('ask') || "";
-					$(this).find("group").each(function() {
-						contact.groups.push($(this).text());
-					});
+					contact = new Contact($(this));
 					// TODO move to prototype
 					_contacts.list[$(this).attr('jid')] = contact;
 				});
 
 				// let user code know something happened
-				$(document).trigger('roster_changed', _contacts);
+				$(document).trigger('roster_changed', _contacts.list);
 				
 				// TODO find a way to fire an event to do this
 				_connection.me.available();
@@ -198,8 +256,13 @@ Strophe.addConnectionPlugin('roster', (function() {
 			}
 
 			// notify user code
-			$(document).trigger('roster_changed', _contacts);
+			$(document).trigger('roster_changed', _contacts.list);
 		}
+	};
+	
+	chatTo = function(jid) {
+		var _contact = findContact(Strophe.getBareJidFromJid(jid));
+		_contact.chatTo();	
 	};
 	
 	findContact = function(jid) {
@@ -229,9 +292,11 @@ Strophe.addConnectionPlugin('roster', (function() {
 			name : name || "",
 			jid : jid
 		});
-		if (groups && groups.length > 0) {
-			$.each(groups, function() {
-				iq.c("group").t(this).up();
+		var _groups = groups.split(" ");
+		if (_groups && _groups.length > 0) {
+			$.each(_groups, function() {
+				if (this.length > 0)
+					iq.c("group").t(this).up();
 			});
 		}
 		_connection.sendIQ(iq);
@@ -267,6 +332,7 @@ Strophe.addConnectionPlugin('roster', (function() {
 	return {
 		init : init,
 		statusChanged : statusChanged,
+		chatTo : chatTo,
 		findContact : findContact,
 		deleteContact : deleteContact,
 		addContact : addContact,

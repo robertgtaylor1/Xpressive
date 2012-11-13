@@ -35,20 +35,28 @@
 		<div id="client" class='ui-widget-content'>
 			<h1 id="title" class='ui-widget-header'> Xpressive XMPP Client</h1>
 			<div id="content" class='table ui-widget-content'>
-				<div class="row" id="button-row">
-					<div id='toolbar'>
-						<span class='button' id='toggle-lists'>Show Rooms</span>&nbsp; 
+				<div class="row" id="button-row">					
+					<div id='my-status' class='disconnected'>
+						<span id='icon'></span>
+					</div>	
+					<span id='my-jid' style='margin-left:50px;'>[...]</span>					
+					<div id='toolbar'> 
 						<span class='button' id='away-pres'>Away</span>&nbsp; 
 						<span class='button' id='available-pres'>Available</span>&nbsp; 
-						<span class='button' id='new-contact'>Add Contact...</span>&nbsp; 
-						<span class='button' id='new-chat'>Chat with...</span>&nbsp; 
 						<span class='button' id='disconnect'>Disconnect</span>
 					</div>
 				</div>
 				<div id='chat-region' class="row">
 					<!-- Xmpp Roster area -->
 					<div id='roster-area' class='ui-corner-all ui-widget-content ui-resize'>
-						<h3 class='ui-widget-header ui-corner-all ui-list' >Roster</h3>						
+						<h3 class='ui-widget-header ui-corner-all ui-list' >Roster</h3>
+						<div style='display : inline-block'>
+							<img class='ui-icon ui-icon-circle-plus xmpp-add-contact' style='display:inline-block; vertical-align:bottom;'/>
+								<div class='tooltip'>Add Contact.</div>
+							&nbsp;<img class='ui-icon ui-icon-comment xmpp-chat-to-dlg' style='display:inline-block; vertical-align:bottom;'/>
+								<div class='tooltip'>Chat with...</div>
+						</div>						
+						&nbsp;&nbsp;<input type='text' id='filter' />
 						<ul></ul>						
 					</div>
 
@@ -85,6 +93,10 @@
 			<label>Name:</label>
 			<br/>
 			<input type='text' id='contact-name'>
+			<br/>
+			<label id='group-label'>Groups:</label>
+			<br/>
+			<input type='text' id='contact-groups'>
 		</div>
 
 		<!-- chat dialog -->

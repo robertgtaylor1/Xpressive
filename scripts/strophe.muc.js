@@ -4,9 +4,9 @@ function Occupant(jid) {
 }
 
 Occupant.prototype = {
-
-	startChat : function(myJid) {
+	startChat : function(jid) {
 		var myName = Strophe.getResourceFromJid(jid);
+		//TODO: add support
 	}
 };
 

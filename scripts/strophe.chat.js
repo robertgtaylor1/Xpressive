@@ -43,7 +43,7 @@ ChatSession.prototype = {
 		if (this.isGroupChat){
 			this.connection.muc.leave(this.to);
 		} else {			
-			this.chatstates().sendGone(to);
+			this.chatstates().sendGone(this.to);
 		}
 	}
 };
@@ -71,9 +71,7 @@ Strophe.addConnectionPlugin('chat', (function() {
 		}
 	};
 
-	var chatTo = function(to) {
-		var bareJid = Strophe.getBareJidFromJid(to);
-		var contact = _roster.findContact(bareJid);
+	var chatTo = function(contact) {
 		var chatSession = {};
 		var resource = null;
 
@@ -88,11 +86,11 @@ Strophe.addConnectionPlugin('chat', (function() {
 			//	'matchBare' : true
 			//});
 
-			Strophe.info("Start chat with: " + Strophe.getBareJidFromJid(to));
-			_chatSessions[bareJid] = chatSession;
+			Strophe.info("Start chat with: " + contact.name + "(" +contact.jid + ")");
+			_chatSessions[contact.jid] = chatSession;
 			$(document).trigger('start_chatting', chatSession);
 		}
-		return true;
+		return chatSession;
 	};
 
 	var joinRoomChat = function(jid) {

@@ -1,31 +1,57 @@
-function Me(jid, password) {
+function Me() {
 	this.jid = "";
 	this.password = "";
 	this.status = "";
 }
 
-Strophe.addConnectionPlugin('me', {
-	_connection : null,
-	myDetails : {},
-	_this : {},
+Me.prototype.setStatus = function(newStatus) {
+	if (this.status === newStatus)
+		return;
+	this.status = newStatus;
+	$(document).trigger('status_changed', this);
+};
 
-	init : function(connection) {
+Strophe.addConnectionPlugin('me', (function() {
+	var _connection = null, myDetails = {};
+
+	var init = function(connection) {
 		Strophe.debug("init me plugin");
 
 		this._connection = connection;
-		this.myDetails = {};
-		connection.addHandler(this._onVersionIq.bind(this), Strophe.NS.VERSION, 'iq', 'get', null, null);
+		this.myDetails = new Me();
+		this._connection.addHandler(_onVersionIq.bind(this), Strophe.NS.VERSION, 'iq', 'get', null, null);
 		this._this = this;
-	},
+	};
 
-	statusChanged : function(status) {
-		if (status === Strophe.Status.CONNECTED) {
-			this.myDetails = new Me(this._connection.jid, "");
-			this._connection.disco.addFeature(Strophe.NS.VERSION);
+	var statusChanged = function(status) {
+		switch (status) {
+			case Strophe.Status.CONNECTED :
+				this.myDetails.jid = this._connection.jid;
+				this.myDetails.setStatus("connected");
+				this._connection.disco.addFeature(Strophe.NS.VERSION);
+				break;
+			case Strophe.Status.CONNECTING :
+				this.myDetails.setStatus("connecting");
+				break;
+			case Strophe.Status.DISCONNECTING :
+				this.myDetails.setStatus("disconnecting");
+				break;
+			case Strophe.Status.DISCONNECTED :
+				this.myDetails.setStatus("disconnected");
+				break;
+			case Strophe.Status.CONNFAIL :
+				this.myDetails.setStatus("connfail");
+				break;
+			case Strophe.Status.AUTHENTICATING :
+				this.myDetails.setStatus("authenticating");
+				break;
+			case Strophe.Status.AUTHFAIL:
+				this.myDetails.setStatus("authfail");
+				break;
 		}
-	},
+	};
 
-	_onVersionIq : function(iq) {
+	var _onVersionIq = function(iq) {
 		var stanza = $(iq);
 
 		var id = stanza.attr('id');
@@ -42,45 +68,63 @@ Strophe.addConnectionPlugin('me', {
 
 		this._connection.send(iqresult.tree());
 		return true;
-	},
+	};
 
-	available : function() {
+	var myJid = function() {
+		return Strophe.getBareJidFromJid(this.myDetails.jid);	
+	};
+	
+	var available = function() {
 		if (this.myDetails.status === "") {
 			this._connection.caps.sendPres();
 		} else {
 			this._connection.send($pres().tree());
 		}
-		this.myDetails.status = "available";
-	},
+		this.myDetails.setStatus("available");
+	};
 
-	away : function() {
-		this.myDetails = "away";
-		this._sendPres('away');
-	},
+	var away = function() {
+		this.myDetails.setStatus("away");
+		_sendPres('away');
+	};
 
-	chat : function() {
-		this.myDetails = "chat";
-		this._sendPres('chat');
-	},
+	var chat = function() {
+		this.myDetails.setStatus("chat");
+		_sendPres('chat');
+	};
 
-	xa : function() {
-		this.myDetails = "xa";
-		this._sendPres('xa');
-	},
+	var xa = function() {
+		this.myDetails.setStatus("xa");
+		_sendPres('xa');
+	};
 
-	dnd : function() {
-		this.myDetails = "dnd";
-		this._sendPres('dnd');
-	},
+	var dnd = function() {
+		this.myDetails.setStatus("dnd");
+		_sendPres('dnd');
+	};
 
-	offline : function() {
-		this.myDetails = "unavailable";
+	var offline = function() {
+		this.myDetails.setStatus("unavailable");
 		this._connection.send($pres({
 			type : "unavailable"
 		}).tree());
-	},
+	};
 
-	_sendPres : function(show) {
-		this._connection.send($pres().c('show', null, show).tree());
-	},
-});
+	var _sendPres = function(show) {
+		if (this._connection !== undefined) {
+			this._connection.send($pres().c('show', null, show).tree());
+		}
+	};
+	
+	return {
+		init : init,
+		statusChanged : statusChanged,
+		available : available,
+		away : away,
+		chat : chat,
+		xa : xa,
+		dnd : dnd,
+		offline : offline,
+		myJid : myJid
+	};
+})());
