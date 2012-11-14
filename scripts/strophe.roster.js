@@ -93,6 +93,25 @@ Contact.prototype = {
 		})
 		return _list.join(", ");		
 	},
+	
+	getInfo : function() {
+		var ret = "offline";
+		
+		if (this.resources) {
+			$.each(this.resources, function(key, resource) {
+				ret = "[" + key + "]";
+				ret += " Status: " + (resource.show || "online");
+				if (resource.status) {
+					ret += ": " + resource.status;
+				}
+				if (resource.timestamp !== undefined) {
+					ret += " Updated at: " + Xpressive._formatDate(resource.timestamp, "{Hours:2}:{Minutes:2} on {Date}/{Month}/{FullYear}");
+				}				
+				return;
+			});
+		}
+		return ret;
+	},
 
 	toString : function() {
 		return "jid:" + this.jid + ", name:" + this.name + ", subscription:" + this.subscription + ", groups:" + this.groups.toString();
@@ -188,9 +207,13 @@ Contacts.prototype = {
 			}).tree());
 		} else {		
 			// contact came online or changed status
+			var stamp = $(presence).find("delay").attr("stamp")
+			var time = stamp === undefined ? new Date() : new Date(stamp);
+			 
 			this.list[jid].resources[resource] = {
 				show : $(presence).find("show").text() || "online",
-				status : $(presence).find("status").text()
+				status : $(presence).find("status").text(),
+				timestamp: time
 			};
 		}
 

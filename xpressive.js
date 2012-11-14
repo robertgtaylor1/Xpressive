@@ -45,7 +45,7 @@
 	},
 
 	do_ask_subscription : function(jid) {
-		$('#approve_dialog').dialog('options', 'jid', jid);
+		$('#approve_dialog').dialog('option', 'jid', jid);
 		$('#approve_dialog').dialog('open');
 	},
 	
@@ -90,9 +90,15 @@
 		room_html += "<div class='room-jid'>" + room.roomJid + "</div>" +
 							"</div>" + 
 						"</li>";
-		//$(room_html).find('#' + room_id).data('secure', room.requiresPassword());
 
 		Xpressive.insert_room(room_id, room_html);
+	},
+	
+	do_update_info : function(contact) {
+		var jid = contact.jid;
+		var jid_id = Xpressive.jid_to_id(jid);
+		var contact_entry = '#' + jid_id;
+		$(contact_entry + " #contact_info").text(contact.getInfo());
 	},
 	
 	do_roster_changed : function(contactsList) {
@@ -126,6 +132,10 @@
 				var contact_html = "<li id='" + jid_id + "'>" + 
 										"<div class='roster-contact " + show + "'>" + 
 											"<div class='roster-name' style='display:inline-block;'>" + name + "</div>";
+
+				contact_html += 	"&nbsp;<img class='ui-icon ui-icon-info xmpp-contact-info' " +
+											"style='display:inline-block; vertical-align:bottom;'/>" +
+										"<div id='contact_info' class='tooltip'>" + contact.getInfo() + "</div>";
 				
 				if (contact.subscription !== "both") {
 					contact_html += 	"&nbsp;<img class='ui-icon ui-icon-lightbulb xmpp-change-details' " +
@@ -542,6 +552,37 @@ $(document).ready(function() {
 	});
 	
 	$('#client').resizable();
+   
+/**
+ * TODO: DIALOGS 
+ */
+
+	$('#status_dialog').dialog({
+		autoOpen : false,
+		dragable : false,
+		modal : true,
+		title : 'Change Status',
+		buttons : {
+			"Update" : function() {
+				var newStatus = $('input[name=status]:checked', '#status_dialog').val();
+				var info = $('#status_info').val();
+				info.trim();
+				// update my status
+				Xpressive.connection.me.changeStatus(newStatus, info);					
+				
+				$(this).dialog('close');
+			}
+		},
+		open : function() {
+			var x = "input[value='" + $(this).dialog('option','currentStatus') + "']";
+			$(x, '#status_dialog').attr('checked', true); 
+			$("#status_dialog").keypress(function(e) {
+				if (e.keyCode == $.ui.keyCode.ENTER) {
+					$(this).parent().find("button:eq(0)").trigger("click");
+				}
+			});		
+		}			
+	});
 	
 	$('#login_dialog').dialog({
 		autoOpen : true,
@@ -569,6 +610,9 @@ $(document).ready(function() {
 					$(this).parent().find("button:eq(0)").trigger("click");
 				}
 			});
+			// TODO: FOR TESTING ONLY
+			$('#jid').val("ryan.giggs@taylor-home.com");
+			$('#password').val("password");
 		}
 	});
 
@@ -577,10 +621,9 @@ $(document).ready(function() {
 		dragable : false,
 		modal : true,
 		open : function() {
-			var $dlg = $('#contact_dialog');
 			var _buttons = {};
-			var _oper = $dlg.dialog('option', 'type');
-			var jid = $dlg.dialog('option', 'jid');
+			var _oper = $(this).dialog('option', 'type');
+			var jid = $(this).dialog('option', 'jid');
 			
 			$('#contact-jid').val(jid).removeAttr('disabled');
 			$('#contact-groups, #group-label').removeClass('hidden');
@@ -623,7 +666,7 @@ $(document).ready(function() {
 					$(this).dialog('close');
 				};				
 			}
-			$dlg.dialog('option', 'buttons', _buttons);
+			$(this).dialog('option', 'buttons', _buttons);
 			
 			$("#contact_dialog").keypress(function(e) {
 				if (e.keyCode == $.ui.keyCode.ENTER) {
@@ -641,7 +684,7 @@ $(document).ready(function() {
 		buttons : {
 			"Deny" : function() {
 				Xpressive.connection.send($pres({
-					to : $(this).dialog('options', 'jid'),
+					to : $(this).dialog('option', 'jid'),
 					"type" : "unsubscribed"
 				}).tree());
 
@@ -650,13 +693,13 @@ $(document).ready(function() {
 
 			"Approve" : function() {
 				Xpressive.connection.send($pres({
-					to : $(this).dialog('options', 'jid'),
+					to : $(this).dialog('option', 'jid'),
 					"type" : "subscribed"
 				}).tree());
 
 				// This contact is not on my roster so request subscription				  
 				Xpressive.connection.send($pres({
-					to : $(this).dialog('options', 'jid'),
+					to : $(this).dialog('option', 'jid'),
 					"type" : "subscribe"
 				}).tree());
 				
@@ -664,7 +707,7 @@ $(document).ready(function() {
 			}
 		},
 		open : function() {
-			$("approve_jid").val($(this).dialog('options', 'jid'));
+			$("approve_jid").val($(this).dialog('option', 'jid'));
 			$("#approve_dialog").keypress(function(e) {
 				if (e.keyCode == $.ui.keyCode.ENTER) {
 					$(this).parent().find("button:eq(1)").trigger("click");
@@ -734,33 +777,49 @@ $(document).ready(function() {
 		}
 	});
 
+	$('#chat-area').tabs().find('.ui-tabs-nav').sortable({
+		axis : 'x'
+	});
+	
+/** 
+ * TODO: CLICK EVENT HANDLERS
+ */
+
+	$(document).on('click', '.my-status', function() {
+		var classList = $('#my-status').attr('class').split(/\s+/);
+		classList.forEach( function(className) {
+			if (className !== 'my-status') {
+				switch (className){
+					case 'available':
+					case 'away':
+					case 'xa':
+					case 'chat':
+					case 'dnd':
+					case 'unavailable':
+						$('#status_dialog').dialog('option', 'currentStatus', className);
+						$('#status_dialog').dialog('open');
+						break;
+					
+					case 'connecting':
+					case 'connected':
+					case 'authenticating':
+					case 'disconnecting':
+					case 'disconnected':
+						break;
+						
+					case 'connfail':
+					case 'authfail':
+						break;
+				}
+				return;
+			}
+		});	
+	});
+	
 	$(document).on('click', '.xmpp-chat-to-dlg', function() {
 		$('#chat_dialog').dialog('open');
 	});
 
-	$('#chat-area').tabs().find('.ui-tabs-nav').sortable({
-		axis : 'x'
-	});
-
-/*	$(document).on('click', '.roster-contact', function() {
-		var jid = $(this).find(".roster-jid").text();
-		var name = $(this).find(".roster-name").text();
-
-		Xpressive.connection.chat.chatTo(jid);
-	});
-*/
-/*	$(document).on('click', '.room-entry', function() {
-		var jid = $(this).find(".room-jid").text();
-		var name = $(this).find(".room-name").text();
-		var secure = Xpressive.connection.muc.isRoomSecure(jid);		
-		var title = "Join: " + name;
-		
-		$('#join_room_dialog').dialog({ 'title' : title, 
-										'secure' : secure, 
-										'jid' : jid });
-		$('#join_room_dialog').dialog('open');
-	});
-*/
 	$(document).on('click', '.xmpp-change-details', function() {
 		
 		var $li = $(this).parents('li');
@@ -805,89 +864,16 @@ $(document).ready(function() {
 		var jid = $li.find(".room-jid").text();
 		Xpressive.connection.muc.refreshInfo(jid);
 	});
-
-	$(document).on('keypress', '.chat-input', function(ev) {
-		var jid = $(this).parent().data('jid');
-		var resource;
-		var groupChat = $(this).parent().data('groupChat');
-		
-		if (ev.which === 13) {
-			ev.preventDefault();
-
-			var topic = $('.chat-topic').val(); 
-			var body = $(this).val();
-			Xpressive.connection.chat.sendNewMessage(jid, resource, body, groupChat);
-
-			$(this).val('');
-			$(this).parent().data('composing', false);
-		} else {
-			if (!groupChat){
-				var composing = $(this).parent().data('composing');
-				if (!composing) {
-					Xpressive.connection.chatstates.sendComposing(jid);
 	
-					$(this).parent().data('composing', true);
-				}
-			}
-		}
+	$(document).on('click', '.xmpp-add-contact', function() {
+		$('#contact_dialog').dialog({ 'title' : "Add New Contact",
+									  'jid' : "@taylor-home.com", 
+									  'name' : "", 
+									  'groups' : "", 
+									  'type' : "add" });
+		$('#contact_dialog').dialog('open');
 	});
 
-	$(document).on('keypress', '.chat-topic', function(ev) {
-		var jid = $(this).parent().data('jid');
-		var groupChat = $(this).parent().data('groupChat');
-		
-		if (ev.which === 13) {
-			ev.preventDefault();
-
-			var topic = $(this).val();
-			Xpressive.connection.chat.sendNewTopic(jid, topic);
-
-			$(this).val('');
-		}
-	});
-
-	$(document).on('mouseenter', '.chat-text li', function ( e ) {
-			var $li = $( this );
-			var $div = $li.find('div');
-			var offset = $div.offset();
-			
-			$li.doTimeout( "hoverOut" );
-			$li.doTimeout( "hoverIn", 500, function () {
-				$div.css('left', e.pageX).css('top', e.pageY);
-				$div.fadeTo( 200, 1.0 );
-			});
-	});
-	
-	$(document).on( 'mouseleave', '.chat-text li', function ( e ) {
-			var $li = $( this );
-
-			$li.doTimeout( "hoverIn" );
-			$li.doTimeout( "hoverOut", 500, function () {
-				$li.find( "div" ).stop( true ).fadeOut();
-			});
-		});
-	
-	$(document).on('mouseenter', 'img', function ( e ) {
-			var $img = $( this );
-			var $div = $img.next('div');
-			var offset = $div.offset();
-			
-			$img.doTimeout( "hoverOut" );
-			$img.doTimeout( "hoverIn", 500, function () {
-				$div.css('left', e.pageX).css('top', e.pageY);
-				$div.fadeTo( 200, 1.0 );
-			});
-	});
-	
-	$(document).on( 'mouseleave', 'img', function ( e ) {
-			var $img = $( this );
-
-			$img.doTimeout( "hoverIn" );
-			$img.doTimeout( "hoverOut", 500, function () {
-				$img.next( "div" ).stop( true ).fadeOut();
-			});
-		});
-	
 	$('#disconnect').click(function() {
 		Xpressive.connection.session.disconnect();
 	});
@@ -946,12 +932,127 @@ $(document).ready(function() {
 		}
 	});
 
+/**
+ * TODO: KEYPRESS EVENT HANDLERS 
+ */
+
+	$(document).on('keypress', '.chat-input', function(ev) {
+		var jid = $(this).parent().data('jid');
+		var resource;
+		var groupChat = $(this).parent().data('groupChat');
+		
+		if (ev.which === 13) {
+			ev.preventDefault();
+
+			var topic = $('.chat-topic').val(); 
+			var body = $(this).val();
+			Xpressive.connection.chat.sendNewMessage(jid, resource, body, groupChat);
+
+			$(this).val('');
+			$(this).parent().data('composing', false);
+		} else {
+			if (!groupChat){
+				var composing = $(this).parent().data('composing');
+				if (!composing) {
+					Xpressive.connection.chatstates.sendComposing(jid);
+	
+					$(this).parent().data('composing', true);
+				}
+			}
+		}
+	});
+
+	$(document).on('keypress', '.chat-topic', function(ev) {
+		var jid = $(this).parent().data('jid');
+		var groupChat = $(this).parent().data('groupChat');
+		
+		if (ev.which === 13) {
+			ev.preventDefault();
+
+			var topic = $(this).val();
+			Xpressive.connection.chat.sendNewTopic(jid, topic);
+
+			$(this).val('');
+		}
+	});
+
 	$('#input').keypress(function() {
 		$(this).css({
 			backgroundColor : '#fff'
 		});
 	});
 
+/**
+ * TODO: MOUSE EVENT HANDLERS 
+ */
+
+	$(document).on('mouseenter', '.my-status', function ( e ) {
+			var $elem = $( this );
+			var $tooltip = $elem.find('div');
+			var offset = $tooltip.offset();
+			
+			$elem.doTimeout( "hoverOut" );
+			$elem.doTimeout( "hoverIn", 500, function () {
+				$tooltip.css('left', e.pageX).css('top', e.pageY);
+				$tooltip.fadeTo( 200, 1.0 );
+			});
+	});
+	
+	$(document).on( 'mouseleave', '.my-status', function ( e ) {
+			var $elem = $( this );
+
+			$elem.doTimeout( "hoverIn" );
+			$elem.doTimeout( "hoverOut", 500, function () {
+				$elem.find( "div" ).stop( true ).fadeOut();
+			});
+		});
+	
+	$(document).on('mouseenter', '.chat-text li', function ( e ) {
+			var $li = $( this );
+			var $div = $li.find('div');
+			var offset = $div.offset();
+			
+			$li.doTimeout( "hoverOut" );
+			$li.doTimeout( "hoverIn", 500, function () {
+				$div.css('left', e.pageX).css('top', e.pageY);
+				$div.fadeTo( 200, 1.0 );
+			});
+	});
+	
+	$(document).on( 'mouseleave', '.chat-text li', function ( e ) {
+			var $li = $( this );
+
+			$li.doTimeout( "hoverIn" );
+			$li.doTimeout( "hoverOut", 500, function () {
+				$li.find( "div" ).stop( true ).fadeOut();
+			});
+		});
+	
+	$(document).on('mouseenter', 'img', function ( e ) {
+			var $img = $( this );
+			var $div = $img.next('div');
+			var offset = $div.offset();
+			
+			$img.doTimeout( "hoverOut" );
+			$img.doTimeout( "hoverIn", 500, function () {
+				$div.css('left', e.pageX).css('top', e.pageY);
+				$div.fadeTo( 200, 1.0 );
+			});
+	});
+	
+	$(document).on( 'mouseleave', 'img', function ( e ) {
+			var $img = $( this );
+
+			$img.doTimeout( "hoverIn" );
+			$img.doTimeout( "hoverOut", 500, function () {
+				$img.next( "div" ).stop( true ).fadeOut();
+			});
+		});
+		
+/**
+ * TODO: FUNCTIONS
+ */
+	
 	function doResize() {
 		var newH = $(this).height();
 		$('.ui-resize').each(
@@ -1083,7 +1184,7 @@ $(document).bind('on_disconnected', function() {
 	$('#muc-area ul').empty();
 	$('#chat-area ul').empty();
 	$('#chat-area div').remove();
-
+	
 	$('#login_dialog').dialog('open');
 });
 
@@ -1109,6 +1210,7 @@ $(document).bind('presence_changed', function(ev, data) {
 	Xpressive.log("Presence Changed Event.");
 
 	Xpressive.do_presence_changed(data);
+	Xpressive.do_update_info(data);
 });
 
 $(document).bind('ask_subscription', function(ev, data) {
@@ -1131,18 +1233,6 @@ $(document).bind('new_chat_message', function(ev, data) {
 	var message = data.message;
 	var fromMe = data.fromMe;
 	Xpressive.on_message(message, fromMe);
-});
-
-//$(document).bind('add_new_contact', function(ev, data) {
-//	var contact = data;
-
-$(document).on('click', '.xmpp-add-contact', function() {
-	$('#contact_dialog').dialog({ 'title' : "Add New Contact",
-								  'jid' : "@taylor-home.com", 
-								  'name' : "", 
-								  'groups' : "", 
-								  'type' : "add" });
-	$('#contact_dialog').dialog('open');
 });
 
 $(document).bind('remove_contact', function(ev, data) {
@@ -1168,8 +1258,10 @@ $(document).bind('modify_contact_details', function(ev, data) {
 	$('#contact_dialog').dialog('open');
 });
 
-$(document).bind('status_changed', function(ev, details) {
+$(document).bind('my_status_changed', function(ev, details) {
 	if (details.jid.length > 0)
 		$('#my-jid').text("[" + Strophe.getBareJidFromJid(details.jid) + "]");
-	$('#my-status').removeClass().addClass(details.status);
+	$('#my-status').removeClass().addClass(details.status + " my-status");
+	$('#my-status .tooltip').text(details.extendedStatusToString());
+	$('#my-nickname').text(details.getNickname());
 });

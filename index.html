@@ -12,7 +12,6 @@
 		<script type="text/javascript" src='scripts/jquery-ui-1.8.24.js'></script>
 		<script type="text/javascript" src='scripts/ui.tabs.closable.js'></script>
 		<script type="text/javascript" src='scripts/jquery.ba-dotimeout.js'></script>
-		<!--<script type="text/javascript" src='scripts/jquery.scrollabletab.js'></script>-->
 
 		<script type="text/javascript" src='scripts/flXHR.js'></script>
 		<script type="text/javascript" src='scripts/strophe.js'></script>
@@ -36,10 +35,12 @@
 			<h1 id="title" class='ui-widget-header'> Xpressive XMPP Client</h1>
 			<div id="content" class='table ui-widget-content'>
 				<div class="row" id="button-row">					
-					<div id='my-status' class='disconnected'>
+					<div id='my-status' class='disconnected my-status'>
+						<div class='tooltip'>Disconnected</div>
 						<span id='icon'></span>
 					</div>	
-					<span id='my-jid' style='margin-left:50px;'>[...]</span>					
+					<span id='my-nickname' class='my-status'></span>
+					<span id='my-jid' class='my-status'></span>					
 					<div id='toolbar'> 
 						<span class='button' id='away-pres'>Away</span>&nbsp; 
 						<span class='button' id='available-pres'>Available</span>&nbsp; 
@@ -73,7 +74,8 @@
 				</div>
 			</div>
 		</div>
-		<!-- login dialog -->
+		
+		<!-- TODO: login dialog -->
 		<div id='login_dialog' class='hidden'>
 			<label> JID:</label>
 			<br/>
@@ -84,7 +86,7 @@
 			<input type='password' id='password' />
 		</div>
 
-		<!-- contact dialog -->
+		<!-- TODO: contact dialog -->
 		<div id='contact_dialog' class='hidden'>
 			<label>JID:</label>
 			<br/>
@@ -99,14 +101,14 @@
 			<input type='text' id='contact-groups'>
 		</div>
 
-		<!-- chat dialog -->
+		<!-- TODO: chat dialog -->
 		<div id='chat_dialog' class='hidden'>
 			<label>JID:</label>
 			<br/>
 			<input type='text' id='chat-jid'>
 		</div>
 
-		<!-- join room dialog -->
+		<!-- TODO: join room dialog -->
 		<div id='join_room_dialog' class='hidden'>
 			<label>Room:</label><span id='room-name'></span>
 			<br/>
@@ -120,12 +122,36 @@
 			</div>
 		</div>
 
-		<!-- approval dialog -->
+		<!-- TODO: approval dialog -->
 		<div id='approve_dialog' class='hidden'>
 			<p>
 				<span id='approve-jid'></span> has requested a subscription
 				to your presence.  Approve or deny?
 			</p>
 		</div>
+		
+		<!-- TODO: status dialog -->
+		<div id='status_dialog' class='hidden'>
+			<label>Change your status: </label>
+			<br/><br/>
+			<div>
+				<div><span><input type='radio' name='status' value='available' ></span>&nbsp;<span>Available</span></div>
+				<div><span><input type='radio' name='status' value='away'/></span>&nbsp;<span>Away</span></div>
+				<div><span><input type='radio' name='status' value='xa'/></span>&nbsp;<span>Extended Away</span></div>
+				<div><span><input type='radio' name='status' value='chat'/></span>&nbsp;<span>Chatting</span></div>
+				<div><span><input type='radio' name='status' value='dnd'/></span>&nbsp;<span>Do Not Disturb</span></div>
+				<div><span><input type='radio' name='status' value='unavailable'/></span>&nbsp;<span>Unavailable/Offline</span></div>
+			</div>
+			<br/>
+			<label>Additional information:</label>
+			<br/>
+			<select id='status_info' >
+				<option></option>
+				<option>Out to lunch</option>
+				<option>Out of the office</option>
+				<option>In a meeting</option>
+				<option>On leave</option>
+			</select>
+		</div> 
 	</body>
 </html>

@@ -1,14 +1,94 @@
-function Me() {
+function Me(connection) {
+	this.conn = connection;
 	this.jid = "";
 	this.password = "";
 	this.status = "";
+	this.info = "";
+	this.nickname = "";
 }
 
-Me.prototype.setStatus = function(newStatus) {
-	if (this.status === newStatus)
+Me.prototype.setNickname = function(newNickname) {
+	this.nickname = newNickname;
+
+	$(document).trigger('my_status_changed', this);
+};
+
+
+Me.prototype.getNickname = function() {
+	
+	if ((this.nickname || "").length === 0) {
+		return Strophe.getNodeFromJid(this.jid);
+	}
+	return this.nickname;
+};
+
+Me.prototype.setStatus = function(newStatus, newInfo) {
+	var oldStatus = this.status;
+	
+	if (oldStatus === newStatus && (newInfo || "") === this.info) {
 		return;
+	}
+	Strophe.debug("Status change: " + oldStatus + " > " + newStatus + " [" + newInfo + "]");
+	
+	this.info = newInfo || "";
 	this.status = newStatus;
-	$(document).trigger('status_changed', this);
+
+	$(document).trigger('my_status_changed', this);
+
+	if (oldStatus === "connected") {
+		this.conn.caps.sendPres();
+	} else {
+		this.sendPresence();
+	}
+};
+
+Me.prototype.statusToString = function() {
+	var statusObj = {
+				unavailable: "Unavailable",
+				available: "Online, Available",
+				chat: "Chatting",
+				away: "Away",
+				xa: "Extended Away",
+				dnd: "Do not disturb",
+				disconnected: "Not connected",
+				autherr: "Authorization failed",
+				connerr: "Connection failed",
+				authenticating : "Authenticating..."
+			};
+	return statusObj[this.status] || "...processing";		
+};
+
+Me.prototype.extendedStatusToString = function() {
+	var status = this.statusToString();
+	if (this.info.length > 0) {
+		status += " : " + this.info;		
+	}
+	return status;
+};
+
+Me.prototype.sendPresence = function() {
+	if (this.conn !== undefined) {
+		switch (this.status) {
+			case "unavailable" :
+				this.conn.send($pres({
+					type : "unavailable"
+					}).tree());
+				return;
+			case "available":
+				this.conn.send($pres());
+				return;
+			case "away":
+			case "xa":
+			case "chat":
+			case "dnd":
+				var pres = 	$pres().c('show', null, this.status);
+				if (this.info.length > 0) {
+					pres.c('status', null, this.info);
+				}
+				this.conn.send(pres.tree());
+				return;
+		}		
+	}
 };
 
 Strophe.addConnectionPlugin('me', (function() {
@@ -18,7 +98,7 @@ Strophe.addConnectionPlugin('me', (function() {
 		Strophe.debug("init me plugin");
 
 		this._connection = connection;
-		this.myDetails = new Me();
+		this.myDetails = new Me(connection);
 		this._connection.addHandler(_onVersionIq.bind(this), Strophe.NS.VERSION, 'iq', 'get', null, null);
 		this._this = this;
 	};
@@ -74,51 +154,38 @@ Strophe.addConnectionPlugin('me', (function() {
 		return Strophe.getBareJidFromJid(this.myDetails.jid);	
 	};
 	
+	var changeStatus = function(status, info) {
+		this.myDetails.setStatus(status, info);
+	};
+	
 	var available = function() {
-		if (this.myDetails.status === "") {
-			this._connection.caps.sendPres();
-		} else {
-			this._connection.send($pres().tree());
-		}
 		this.myDetails.setStatus("available");
 	};
 
 	var away = function() {
 		this.myDetails.setStatus("away");
-		_sendPres('away');
 	};
 
 	var chat = function() {
 		this.myDetails.setStatus("chat");
-		_sendPres('chat');
 	};
 
 	var xa = function() {
 		this.myDetails.setStatus("xa");
-		_sendPres('xa');
 	};
 
 	var dnd = function() {
 		this.myDetails.setStatus("dnd");
-		_sendPres('dnd');
 	};
 
 	var offline = function() {
 		this.myDetails.setStatus("unavailable");
-		this._connection.send($pres({
-			type : "unavailable"
-		}).tree());
-	};
-
-	var _sendPres = function(show) {
-		if (this._connection !== undefined) {
-			this._connection.send($pres().c('show', null, show).tree());
-		}
 	};
 	
 	return {
 		init : init,
 		statusChanged : statusChanged,
+		changeStatus : changeStatus,
 		available : available,
 		away : away,
 		chat : chat,
