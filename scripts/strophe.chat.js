@@ -157,9 +157,9 @@ Strophe.addConnectionPlugin('chat', (function() {
 	var incomingMessage = function(message) {
 		var msg = $(message);
 		var from = msg.attr("from");
-		var jid = Strophe.getBareJidFromJid(from);
 		var chatSession = _chatSessions[jid] || null;
 		var type = msg.attr("type");
+		var jid;
 		var contact;
 		var contactName;
 		var room;
@@ -209,7 +209,6 @@ Strophe.addConnectionPlugin('chat', (function() {
 	var endSession = function(jid) {
 		var session = _chatSessions[jid];
 		session.endChat();
-		delete _chatSessions[jid];
 	};
 	
 	return {

@@ -26,10 +26,6 @@ textarea.disabled {
 	background-color: #bbb;
 }
 
-#approve-jid {
-	font-weight: bold;
-}
-
 #my-status {
 	height: 30px;
 	width: 30px;
@@ -415,7 +411,7 @@ textarea.disabled {
 	text-align: center;
 	display: none;
 	font-size: 10px;
-	z-index: 900;
+	z-index: 2000;
 }
 
 .no-js div:hover .tooltip,

@@ -13,6 +13,7 @@ Me.prototype.setNickname = function(newNickname) {
 	$(document).trigger('my_status_changed', this);
 };
 
+
 Me.prototype.getNickname = function() {
 	
 	if ((this.nickname || "").length === 0) {
@@ -98,7 +99,6 @@ Strophe.addConnectionPlugin('me', (function() {
 
 		this._connection = connection;
 		this.myDetails = new Me(connection);
-		this.myDetails.nickname = Xpressive.getSetting("nickname");
 		this._connection.addHandler(_onVersionIq.bind(this), Strophe.NS.VERSION, 'iq', 'get', null, null);
 		this._this = this;
 	};
