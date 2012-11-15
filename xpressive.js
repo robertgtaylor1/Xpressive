@@ -3,6 +3,8 @@
 	start_time : null,
 	pending_subscriber : null,
 
+	settings : undefined,	
+
 	jid_to_id : function(jid) {
 		return Strophe.getBareJidFromJid(jid).replace("@", "-").replace(/\./g, '-');
 	},
@@ -13,6 +15,34 @@
 
 	log : function(msg) {
 		$('#console .log-messages').append("<div><span class='log'>" + msg + "</span></div>");
+	},
+
+	getSettings : function() {
+		if (!Xpressive.settings)
+		{
+			Xpressive.settings = $.jStorage.get("Settings");
+			if (!Xpressive.settings)
+			{
+				// popup settings dialog
+				$('#settings_dialog').dialog('open');
+			}		
+		}
+		return Xpressive.settings;
+	},
+
+	setSettings : function(newSettings) {
+		$.each(newSettings, function(key, value) {
+			Xpressive.settings[key] = value;
+		});
+		$.jStorage.set("Settings", Xpressive.settings);							
+	},
+
+	getSetting : function(key) {
+		return Xpressive.getSettings()[key];
+	},
+
+	setSetting : function(key, value) {
+		Xpressive.setSettings({key: value});
 	},
 
 	do_presence_changed : function(contact) {
@@ -107,9 +137,7 @@
 		for (var jid in contactsList) {
 			var contact = contactsList[jid];
 			var sub = contact.subscription;
-			var jid = contact.jid;
 			var name = contact.name || Strophe.getNodeFromJid(jid);
-			var groups = contact.getGroups();
 			var jid_id = Xpressive.jid_to_id(jid);
 
 			Xpressive.log("    jid: " + jid + "[" + sub + "]");
@@ -119,6 +147,7 @@
 				$('#' + jid_id).remove();
 			} else {
 				// contact is being added or modified
+				var groups = contact.getGroups();
 				var show = "online";
 				if (contact.online()) {
 					for( resource in contact.resources) {
@@ -213,6 +242,7 @@
 		var	groupChat = false;
 		var messageTime = new Date();
 		var delay;
+		var messageText;
 		
 		if (fromMe) {
 			messageSender = Xpressive.connection.me.jid;
@@ -271,16 +301,18 @@
 				Xpressive._scroll_chat(jid_id);
 			}
 			// TODO let's ignore HTML content for now
-			body = ""; //$(message).find("html > body");
+			body = $(message).find("html > body");
 	
 			if (body.length === 0) {
 				body = $(message).find('body');
 				if (body.length > 0) {
-					body = body.text()
+					messageText = body.text()
 				} else {
-					body = null;
+					messageText = null;
 				}
 			} else {
+				messageText = body.text();
+				/*
 				body = body.contents();
 	
 				span = $("<span></span>");
@@ -292,10 +324,11 @@
 						span.append(this.xml);
 					}
 				});
-				body = span;
+				messageText = span;
+				*/
 			}
 	
-			if (body) {
+			if (messageText) {
 				// remove notifications since user is now active
 				$(chatTab + ' .chat-event').remove();
 	
@@ -317,7 +350,7 @@
 					                                    	"</span></span><span class='chat-text'></span></ul>");					
 					lastUl = $(chatTab + ' ul').last().data('sender', messageSender);
 				}
-				$(chatTab + ' .chat-message:last .chat-text').append("<li>" + body + "<div class='chat-tooltip'>Message time : " + timeString + "</div></li>");
+				$(chatTab + ' .chat-message:last .chat-text').append("<li>" + messageText + "<div class='chat-tooltip'>Message time : " + timeString + "</div></li>");
 	
 				Xpressive._scroll_chat(jid_id);
 			}
@@ -556,10 +589,53 @@ $(document).ready(function() {
 /**
  * TODO: DIALOGS 
  */
+	$('#settings_dialog').dialog({
+		autoOpen : false,
+		dragable : false,
+		resizable: false,
+		modal : true,
+		title : 'Settings',
+		buttons : {
+			"Save" : function() {
+				var _server = $('#settings-server').val().trim();
+				if (_server.length === 0)
+					return;
+				var _port = $('#settings-port').val().trim();
+				var _nickname = $('#settings-nickname').val().trim();
+				var _resource = $('#settings-resource').val().trim();
+				
+				$(this).dialog('option', 'server', _server);
+				$(this).dialog('option', 'port', _port);
+				$(this).dialog('option', 'resource', _resource);
+				$(this).dialog('option', 'nickname', _nickname);
+				
+				$(document).trigger('save_settings', {
+					'server' : _server,
+					'port' : _port,
+					'resource' : _resource,
+					'nickname' : _nickname
+				});
+
+				$(this).dialog('close');
+			}
+		},
+		open : function() {
+			$("#settings_dialog").keypress(function(e) {
+				if (e.keyCode == $.ui.keyCode.ENTER) {
+					$(this).parent().find("button:eq(0)").trigger("click");
+				}
+			});
+			$('#settings-server').val($(this).dialog('option', 'server'));
+			$('#settings-port').val($(this).dialog('option', 'port'));
+			$('#settings-resource').val($(this).dialog('option', 'resource'));
+			$('#settings-nickname').val($(this).dialog('option', 'nickname'));
+		}
+	});
 
 	$('#status_dialog').dialog({
 		autoOpen : false,
 		dragable : false,
+		resizable: false,
 		modal : true,
 		title : 'Change Status',
 		buttons : {
@@ -587,20 +663,28 @@ $(document).ready(function() {
 	$('#login_dialog').dialog({
 		autoOpen : true,
 		dragable : false,
+		resizable: false,
 		modal : true,
 		title : 'Sign In',
 		buttons : {
 			"Connect" : function() {
-				var password = $('#password').val().trim();
+				var password = $('#login-password').val().trim();
 				if (password.length === 0)
 					return;
 				
+				var settings = Xpressive.getSettings();
+				
 				$(document).trigger('connect', {
-					'jid' : $('#jid').val().trim(),
-					'password' : password
+					'myjid' : $('#login-jid').val().trim(),
+					'password' : password,
+					'myresource' : $('#login-resource').val().trim(),
+					'server' : settings.server,
+					'port' : settings.port,
+					'resource' : settings.resource
 				});
 
-				//$('#password').val('');
+				// TODO: FOR TESTING ONLY
+				//$('#login-password').val('');
 				$(this).dialog('close');
 			}
 		},
@@ -610,15 +694,17 @@ $(document).ready(function() {
 					$(this).parent().find("button:eq(0)").trigger("click");
 				}
 			});
+			$('#login-resource').val(Xpressive.getSetting("myresource"));
+			$('#login-jid').val(Xpressive.getSetting("myjid"));
 			// TODO: FOR TESTING ONLY
-			$('#jid').val("ryan.giggs@taylor-home.com");
-			$('#password').val("password");
+			$('#login-password').val("password");
 		}
 	});
 
 	$('#contact_dialog').dialog({
 		autoOpen : false,
 		dragable : false,
+		resizable: false,
 		modal : true,
 		open : function() {
 			var _buttons = {};
@@ -679,18 +765,10 @@ $(document).ready(function() {
 	$('#approve_dialog').dialog({
 		autoOpen : false,
 		dragable : false,
+		resizable: false,
 		modal : true,
 		title : 'Subscription Request',
 		buttons : {
-			"Deny" : function() {
-				Xpressive.connection.send($pres({
-					to : $(this).dialog('option', 'jid'),
-					"type" : "unsubscribed"
-				}).tree());
-
-				$(this).dialog('close');
-			},
-
 			"Approve" : function() {
 				Xpressive.connection.send($pres({
 					to : $(this).dialog('option', 'jid'),
@@ -704,15 +782,24 @@ $(document).ready(function() {
 				}).tree());
 				
 				$(this).dialog('close');
-			}
+			},
+
+			"Deny" : function() {
+				Xpressive.connection.send($pres({
+					to : $(this).dialog('option', 'jid'),
+					"type" : "unsubscribed"
+				}).tree());
+
+				$(this).dialog('close');
+			},
 		},
 		open : function() {
-			$("approve_jid").val($(this).dialog('option', 'jid'));
+			$("#approve-jid").text($(this).dialog('option', 'jid'));
 			$("#approve_dialog").keypress(function(e) {
 				if (e.keyCode == $.ui.keyCode.ENTER) {
-					$(this).parent().find("button:eq(1)").trigger("click");
-				} else if (e.keyCode == $.ui.keyCode.ESCAPE) {
 					$(this).parent().find("button:eq(0)").trigger("click");
+				} else if (e.keyCode == $.ui.keyCode.ESCAPE) {
+					$(this).parent().find("button:eq(1)").trigger("click");
 				}
 			});
 		}
@@ -721,6 +808,7 @@ $(document).ready(function() {
 	$('#chat_dialog').dialog({
 		autoOpen : false,
 		draggable : false,
+		resizable: false,
 		modal : true,
 		title : 'Start a Chat',
 		buttons : {
@@ -745,6 +833,7 @@ $(document).ready(function() {
 	$('#join_room_dialog').dialog({
 		autoOpen : false,
 		draggable : false,
+		resizable: false,
 		modal : true,
 		title : 'Join a Room',
 		passwordRequired : false,
@@ -784,6 +873,12 @@ $(document).ready(function() {
 /** 
  * TODO: CLICK EVENT HANDLERS
  */
+
+	$(document).on('click', '#settings', function() {
+		var settings = Xpressive.getSettings();
+		$('#settings_dialog').dialog(settings);
+		$('#settings_dialog').dialog('open');
+	});
 
 	$(document).on('click', '.my-status', function() {
 		var classList = $('#my-status').attr('class').split(/\s+/);
@@ -1129,10 +1224,23 @@ $(document).ready(function() {
 		};
 		Xpressive.log(level + ": " + message);
 	};
+	
+	var settings = $.jStorage.get("Settings");
+	if (settings == null) {
+		Xpressive.getSettings();
+	}	
 });
 
 $(document).bind('connect', function(ev, data) {
-	var conn = new Strophe.Connection("http://taylor-home.com:5280/xmpp-httpbind");
+	
+	var port = data.port || "5280";
+	var server = data.server;
+	var resource = data.resource || "xmpp-httpbind";
+	
+	Xpressive.log("Connect to : http://" + server + ":" + port + "/" + resource);
+	
+	var conn = new Strophe.Connection("http://" + server + ":" + port + "/" + resource);
+	// used in TEST
 	//var conn = new Strophe.Connection("http://bosh.metajack.im:5280/xmpp-httpbind");
 
 	conn.xmlInput = function(body) {
@@ -1142,9 +1250,11 @@ $(document).bind('connect', function(ev, data) {
 	conn.xmlOutput = function(body) {
 		Xpressive.show_traffic(body, 'outgoing');
 	};
-
-	conn.connect(data.jid, data.password, function(status) {
+	var jid = data.myjid + "/" + data.myresource || "xprclient";
+	
+	conn.connect(jid, data.password, function(status) {
 		if (status === Strophe.Status.CONNECTED) {
+			Xpressive.setSettings({ "myjid": data.myjid, "myresource": data.myresource });
 			$(document).trigger('on_connected');
 		} else if (status === Strophe.Status.DISCONNECTED) {
 			$(document).trigger('on_disconnected');
@@ -1219,13 +1329,11 @@ $(document).bind('ask_subscription', function(ev, data) {
 	Xpressive.do_ask_subscription(data);
 });
 
-$(document).bind('start_chatting', function(ev, data) {
-	var chatSession = data;
+$(document).bind('start_chatting', function(ev, chatSession) {
 	Xpressive.on_start_chat(chatSession.to, chatSession.name, chatSession.isGroupChat);
 });
 
-$(document).bind('join_room', function(ev, data) {
-	var room = data;
+$(document).bind('join_room', function(ev, room) {
 	Xpressive.on_join_room(room.roomJid, room.roomName);
 });
 
@@ -1235,10 +1343,7 @@ $(document).bind('new_chat_message', function(ev, data) {
 	Xpressive.on_message(message, fromMe);
 });
 
-$(document).bind('remove_contact', function(ev, data) {
-	var contact = data;
-	
-	
+$(document).bind('remove_contact', function(ev, contact) {
 	$('#contact_dialog').dialog({ 'title' : "Confirm Remove Contact",
 									'jid' : contact.jid, 
 									'name' : contact.name, 
@@ -1247,9 +1352,7 @@ $(document).bind('remove_contact', function(ev, data) {
 	$('#contact_dialog').dialog('open');
 });
 
-$(document).bind('modify_contact_details', function(ev, data) {
-	var contact = data;
-	
+$(document).bind('modify_contact_details', function(ev, contact) {
 	$('#contact_dialog').dialog({ 'title' : "Modify Contact Details",
 									'jid' : contact.jid, 
 									'name' : contact.name, 
@@ -1264,4 +1367,8 @@ $(document).bind('my_status_changed', function(ev, details) {
 	$('#my-status').removeClass().addClass(details.status + " my-status");
 	$('#my-status .tooltip').text(details.extendedStatusToString());
 	$('#my-nickname').text(details.getNickname());
+});
+
+$(document).bind('save_settings', function(ev, newSettings) {
+	Xpressive.setSettings(newSettings);
 });

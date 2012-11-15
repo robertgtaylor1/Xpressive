@@ -3,7 +3,7 @@ function Contact(item) {
 	var $item = item;
 	this.jid = $item.attr('jid');
 
-	Strophe.debug("Contact created for: " + jid)
+	Strophe.debug("Contact created for: " + this.jid)
 
 	this.item = $item;
 	
@@ -26,6 +26,7 @@ function Contact(item) {
 	}
 	this.vCard = {};
 	this.chatSession = null;
+	this.ptype = null;
 }
 
 Contact.prototype = {
@@ -48,18 +49,21 @@ Contact.prototype = {
 	update : function(item) {
 		this.item = item;
 		var _name = item.attr('name');
+		
+		Strophe.debug("Contact.update for: " + this.jid);
+		
 		if (_name !== undefined) {
 			this.name = _name;
 		}
-		var _subscription = $item.attr('subscripton');
+		var _subscription = item.attr('subscripton');
 		if (_subscription !== undefined){
 		 	this.subscription = _subscription;
 		}
-		var _ask = $item.attr('ask');
+		var _ask = item.attr('ask');
 		if (_ask !== undefined){
 		 	this.ask = _ask;
 		}
-		var _groups = $item.find('group');
+		var _groups = item.find('group');
 		if (_groups !== undefined){
 		 	this.groups = _groups;
 		}
@@ -73,10 +77,6 @@ Contact.prototype = {
 		});
 
 		Xpressive.connection.send(message);
-	},
-
-	changeName : function(newName) {
-		//TODO:
 	},
 
 	getVCard : function() {
@@ -126,46 +126,48 @@ function Contacts(connection) {
 Contacts.prototype = {
 	// called when roster udpates are received
 	rosterChanged : function(iq) {
-
 		var item = $(iq).find('item');
 		var jid = item.attr('jid');
 		var subscription = item.attr('subscription') || "";
 		var ask = item.attr('ask') || "";
 		var contact = {};
-		
-		if (subscription === "remove") {
-			// removing contact from roster
-			$(document).trigger("roster_changed", { jid : item });
-			delete this.list[jid];
-			return true;
-		} else if (subscription === "none") {
-			// adding contact to roster
-			if (ask === "") {
-				contact = new Contact(item);
-				this.list[jid] = contact;
-				// send a presence(type=subscribe)
-				this.conn.send($pres({
-					to : jid,
-					type: 'subscribe',
-				}).tree());
-			} else if (ask === "subscribe"){
-				contact = this.list[jid];
-				contact.update(item);
-			}
-		} else {
-			// modifying contact on roster
-			contact = this.list[jid];
-			contact.update(item);
-		}
-		// TODO : look at this. It could be handled by an event (trigger)
+		var _list = {};
+
+		Strophe.info("rosterChange for: " + jid + " [" + subscription + "]");
+				
 		// acknowledge receipt
 		this.conn.send($iq({
 			type : "result",
 			id : $(iq).attr('id')
 		}).tree());
 
+		if (subscription === "remove") {
+			// removing contact from roster
+			contact = new Contact(item);
+			delete this.list[jid];
+		} else {
+			contact = this.list[jid];
+			if (!contact) {
+				// adding contact to roster
+				contact = new Contact(item);
+				this.list[jid] = contact;
+
+				if (ask === "" && subscription === "none") {
+					// send a presence(type=subscribe)
+					this.conn.send($pres({
+						to : jid,
+						type: 'subscribe',
+					}).tree());
+				} else {
+					Strophe.info("rosterChange ignored");
+				}
+			} else {			
+				contact.update(item);
+			}
+		}
+		_list[jid] = contact;		
 		// notify user code of roster changes
-		$(document).trigger("roster_changed", this.list);
+		$(document).trigger("roster_changed", _list);
 		 
 		return true;
 	},
@@ -183,43 +185,58 @@ Contacts.prototype = {
 		var resource = Strophe.getResourceFromJid(from);
 		var ptype = $(presence).attr("type") || $(presence).find("show").text() || "available";
 
-		Strophe.info("presence change for: " + from + " [" + ptype + "]");
+		Strophe.info("presenceChange for: " + from + " [" + ptype + "]");
 
 		if (ptype === "error") {
 			//TODO: ignore error presence for now
 			return true;
 		}
-		if (!this.list[jid]) {
+		var contact = this.list[jid];
+		if (!contact) {
 			// This is someone we don't have on our roster so pop-up the dialog
 			if (ptype === "subscribe") {
 				$(document).trigger("ask_subscription", jid);
 			}			
-		} else if (ptype === "unavailable") {
-			// remove resource, contact went offline
-			try {
-				delete this.list[jid].resources[resource];
-			} catch (e) { }
-		} else if (ptype === "subscribe") {
-			// this is someone we know about so accept request
-			Xpressive.connection.send($pres({
-				to : jid,
-				type : "subscribed"
-			}).tree());
-		} else {		
-			// contact came online or changed status
-			var stamp = $(presence).find("delay").attr("stamp")
-			var time = stamp === undefined ? new Date() : new Date(stamp);
-			 
-			this.list[jid].resources[resource] = {
-				show : $(presence).find("show").text() || "online",
-				status : $(presence).find("status").text(),
-				timestamp: time
-			};
+		} else {
+			contact.ptype = ptype;
+			
+			if (ptype === "unavailable") {
+				// remove resource, contact went offline
+				try {
+					delete contact.resources[resource];
+				} catch (e) { }
+			} else if (ptype === "subscribe") {
+				// this is someone we know about so accept request
+				Xpressive.connection.send($pres({
+					to : jid,
+					type : "subscribed"
+				}).tree());				
+			} else if (ptype === "unsubscribe") {
+				// this is someone we know about so accept request
+				Xpressive.connection.send($pres({
+					to : jid,
+					type : "unsubscribed"
+				}).tree());
+			} else if (ptype=== "subscribed") {
+				// ignore this
+			} else {		
+				// contact came online or changed status
+				if (resource) { 
+					// make sure we have a resource string
+					var stamp = $(presence).find("delay").attr("stamp")
+					var time = stamp === undefined ? new Date() : new Date(stamp);
+					
+					contact.resources[resource] = {
+						show : $(presence).find("show").text() || "online",
+						status : $(presence).find("status").text(),
+						timestamp: time
+					};
+				}
+			}
+		
+			// notify user code of roster changes
+			$(document).trigger("presence_changed", contact);
 		}
-
-		// notify user code of roster changes
-		$(document).trigger("presence_changed", this.list[jid]);
-
 		return true;
 	}
 }

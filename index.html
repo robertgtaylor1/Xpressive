@@ -8,11 +8,13 @@
 		<link rel='stylesheet' href='xpressive.ui.css' />
 		<link rel="stylesheet" href="Content/themes/base/jquery-ui.css" />
 
+		<script type="text/javascript" src='scripts/json2.js'></script>
 		<script type="text/javascript" src='scripts/jquery-1.8.2.js'></script>
 		<script type="text/javascript" src='scripts/jquery-ui-1.8.24.js'></script>
 		<script type="text/javascript" src='scripts/ui.tabs.closable.js'></script>
 		<script type="text/javascript" src='scripts/jquery.ba-dotimeout.js'></script>
-
+		<script type="text/javascript" src='scripts/jstorage.js'></script>
+		
 		<script type="text/javascript" src='scripts/flXHR.js'></script>
 		<script type="text/javascript" src='scripts/strophe.js'></script>
 		<script type="text/javascript" src='scripts/strophe.flxhr.js'></script>
@@ -44,6 +46,7 @@
 					<div id='toolbar'> 
 						<span class='button' id='away-pres'>Away</span>&nbsp; 
 						<span class='button' id='available-pres'>Available</span>&nbsp; 
+						<span class='button' id='settings'>Settings</span>
 						<span class='button' id='disconnect'>Disconnect</span>
 					</div>
 				</div>
@@ -75,28 +78,51 @@
 			</div>
 		</div>
 		
+		<!-- TODO: settings dialog-->
+		<div id='settings_dialog' class='hidden'>
+			<label for='settings-server'>Server: (required)</label>
+			<br/>
+			<input type='text' id='settings-server' />
+			<br/>
+			<label for='settings-port'>Port: (default=5280)</label>
+			<br/>
+			<input type='text' id='settings-port' />
+			<br/>
+			<label for='settings-resource'>Resource: (default=xmpp-httpbind)</label>
+			<br/>
+			<input type='text' id='settings-resource' />
+			<br/>
+			<label for='settings-nickname'>Your Default Nickname:</label>
+			<br/>
+			<input type='text' id='settings-nickname' />
+		</div>
+		
 		<!-- TODO: login dialog -->
 		<div id='login_dialog' class='hidden'>
-			<label> JID:</label>
+			<label for='login-jid'> JID:</label>
 			<br/>
-			<input type='text' id='jid' />
+			<input type='text' id='login-jid' />
 			<br/>
-			<label> Password:</label>
+			<label for='login-password'> Password:</label>
 			<br/>
-			<input type='password' id='password' />
+			<input type='password' id='login-password' />
+			<br/>
+			<label for='login-resource'> Resource:</label>
+			<br/>
+			<input type='text' id='login-resource' />
 		</div>
 
 		<!-- TODO: contact dialog -->
 		<div id='contact_dialog' class='hidden'>
-			<label>JID:</label>
+			<label for='contact-jid'>JID:</label>
 			<br/>
 			<input type='text' id='contact-jid'>
 			<br/>
-			<label>Name:</label>
+			<label for='contact-name'>Name:</label>
 			<br/>
 			<input type='text' id='contact-name'>
 			<br/>
-			<label id='group-label'>Groups:</label>
+			<label for='contact-groups' id='group-label'>Groups:</label>
 			<br/>
 			<input type='text' id='contact-groups'>
 		</div>
@@ -126,7 +152,7 @@
 		<div id='approve_dialog' class='hidden'>
 			<p>
 				<span id='approve-jid'></span> has requested a subscription
-				to your presence.  Approve or deny?
+				to your presence.<br/>Approve or deny?
 			</p>
 		</div>
 		
