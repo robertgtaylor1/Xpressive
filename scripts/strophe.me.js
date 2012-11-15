@@ -6,7 +6,7 @@ function Me(connection) {
 	this.info = "";
 	this.nickname = "";
 }
-
+ 
 Me.prototype.setNickname = function(newNickname) {
 	this.nickname = newNickname;
 

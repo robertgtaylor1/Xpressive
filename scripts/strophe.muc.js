@@ -345,7 +345,7 @@ Servers.prototype = {
 		var server = this.servers[serverJid];
 		return server;
 	},
-
+ 
 	getRoom : function(jid) {
 		var room = null;
 		var server = this.getServer(jid);
