@@ -1,29 +1,25 @@
 // Contact object
-function Contact(item) {
+function Contact(item, jid) {
 	var $item = item;
-	this.jid = $item.attr('jid');
+	if (!$item) {
+		this.jid = jid;
+		this.item = $item;
+		this.name = Strophe.getNodeFromJid(this.jid);
+		this.subscription = "none";	
+		this.ask = "";	
+		this.groups = {};	
+	} else {
+		this.jid = $item.attr('jid');
 
+		this.item = $item;
+		this.name = $item.attr('name') || Strophe.getNodeFromJid(this.jid);
+		this.subscription = $item.attr('subscription') || "none";	
+		this.ask = $item.attr('ask') || "";	
+		this.groups = $item.find('group') || {};	
+	}
 	Strophe.debug("Contact created for: " + this.jid)
 
-	this.item = $item;
-
-	this.name = $item.attr('name');
-	if (this.name === undefined){
-		 this.name = Strophe.getNodeFromJid(this.jid);
-	}
 	this.resources = {};
-	this.subscription = $item.attr('subscription');
-	if (this.subscription === undefined) {
-		 this.subscription = "none";
-	}
-	this.ask = $item.attr('ask');
-	if (this.ask === undefined) {
-		 this.ask = "";
-	}
-	this.groups = $item.find('group');
-	if (this.groups === undefined) {
-		 this.groups = {};
-	}
 	this.vCard = {};
 	this.chatSession = null;
 	this.ptype = null;
@@ -300,6 +296,15 @@ Strophe.addConnectionPlugin('roster', (function() {
 		}
 	};
 
+	chatToDirect = function(jid) {
+		var _contact = findContact(Strophe.getBareJidFromJid(jid));
+		
+		if (!_contact) {
+			_contact = new Contact(null, jid);
+		}		
+		_contact.chatTo();
+	}
+
 	chatTo = function(jid) {
 		var _contact = findContact(Strophe.getBareJidFromJid(jid));
 		_contact.chatTo();	
@@ -373,6 +378,7 @@ Strophe.addConnectionPlugin('roster', (function() {
 		init : init,
 		statusChanged : statusChanged,
 		chatTo : chatTo,
+		chatToDirect : chatToDirect,
 		findContact : findContact,
 		deleteContact : deleteContact,
 		addContact : addContact,

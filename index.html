@@ -29,6 +29,7 @@
 		<script type="text/javascript" src='scripts/strophe.roster.js'></script>
 		<script type="text/javascript" src='scripts/strophe.chatstates.js'></script>
 		<script type="text/javascript" src='scripts/strophe.chat.js'></script>
+		<script type="text/javascript" src='scripts/strophe.x.js'></script>
 
 		<script type="text/javascript" src='xpressive.js'></script>
 	</head>
@@ -66,7 +67,7 @@
 
 					<!-- Muc area -->
 					<div id='muc-area' class='ui-corner-all ui-widget-content ui-resize hidden'>
-						<h3 class='ui-widget-header ui-corner-all ui-list' >Servers</h3>
+						<h3 class='ui-widget-header ui-corner-all ui-list' >Chat Rooms</h3>
 						<ul></ul>
 					</div>
 					<div class='vertical-divider ui-resize'><span>|</span></div>
@@ -76,6 +77,11 @@
 					</div>						
 				</div>
 			</div>
+		</div>
+
+		<!-- TODO: room details dialog-->
+		<div id='roomDetails_dialog' class='hidden'>
+			Details go here.
 		</div>
 
 		<!-- TODO: settings dialog-->
@@ -96,6 +102,7 @@
 			<br/>
 			<input type='text' id='settings-nickname' />
 		</div>
+
 
 		<!-- TODO: login dialog -->
 		<div id='login_dialog' class='hidden'>

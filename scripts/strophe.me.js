@@ -14,10 +14,13 @@ Me.prototype.setNickname = function(newNickname) {
 };
 
 
-Me.prototype.getNickname = function() {
-	
+Me.prototype.getNickname = function() {	
 	if ((this.nickname || "").length === 0) {
-		return Strophe.getNodeFromJid(this.jid);
+		var _nickname = Xpressive.getSetting("nickname");
+		if ((_nickname || "").length === 0) {
+			_nickname = Strophe.getNodeFromJid(this.jid);
+		}
+		this.setNickname(_nickname);
 	}
 	return this.nickname;
 };

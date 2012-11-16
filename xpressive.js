@@ -815,7 +815,7 @@ $(document).ready(function() {
 			"Start" : function() {
 				var jid = $('#chat-jid').val();
 
-				Xpressive.connection.chat.chatTo(jid);
+				Xpressive.connection.roster.chatToDirect(jid);
 
 				$('#chat-jid').val('');
 				$(this).dialog('close');
@@ -830,10 +830,45 @@ $(document).ready(function() {
 		}
 	});
 
+	$('#roomDetails_dialog').dialog({
+		autoOpen : false,
+		draggable : false,
+		resizable : false,
+		modal : true,
+		width : 'auto',
+		title : 'Room : ?',
+		buttons : {
+			"Ok" : function() {
+				$(this).dialog('close');
+			}
+		},
+		open : function() {
+			$(this).keypress(function(e) {
+				if (e.keyCode == $.ui.keyCode.ENTER) {
+					$(this).parent().find("button:eq(0)").trigger("click");
+				}
+			});
+
+			var jid = $(this).dialog('option', 'roomJid');
+			var room = Xpressive.connection.muc.getRoom(jid);
+			var roomName = room.roomName;
+			$(this).dialog('option', 'title', "Room : " + roomName);
+			var html = room.form.toHTML();
+			$(this).html(html);
+		},
+		close : function() {
+			//TODO do something
+		},		
+	});
+	
+	$('#roomDetails_dialog').bind('submit', function() {
+		$(this).dialog('close');
+	});
+		 
 	$('#join_room_dialog').dialog({
 		autoOpen : false,
 		draggable : false,
-		resizable: false,
+		resizable : false,
 		modal : true,
 		title : 'Join a Room',
 		passwordRequired : false,
@@ -846,7 +881,7 @@ $(document).ready(function() {
 				if (nick.length === 0 || (this.passwordRequired && password.length === 0 )) {					
 					return;
 				}				
-				Xpressive.Connection.muc.join(jid, nick, password);
+				Xpressive.connection.muc.join(jid, nick, password);
 
 				$(this).dialog('close');
 			}
@@ -858,7 +893,7 @@ $(document).ready(function() {
 			} else {
 				$('#room-password-div').addClass('hidden')
 			}
-			$("#join_room_dialog").keypress(function(e) {
+			$(this).keypress(function(e) {
 				if (e.keyCode == $.ui.keyCode.ENTER) {
 					$(this).parent().find("button:eq(0)").trigger("click");
 				}
@@ -941,6 +976,14 @@ $(document).ready(function() {
 		Xpressive.connection.roster.chatTo(jid);
 	});
 
+	$(document).on('click', '.room-name, .room-jid', function() {
+		var $li = $(this).parents('li');
+		var jid = $li.find(".room-jid").text();
+
+		$('#roomDetails_dialog').dialog('option', 'roomJid', jid);
+		$('#roomDetails_dialog').dialog('open');
+	});
+	
 	$(document).on('click', '.xmpp-join-room', function() {
 		var $li = $(this).parents('li');
 		var jid = $li.find(".room-jid").text();

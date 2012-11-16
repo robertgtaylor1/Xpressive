@@ -70,7 +70,7 @@ Strophe.addConnectionPlugin('chat', (function() {
 			_chatSessions = {};
 		}
 	};
-
+	
 	var chatTo = function(contact) {
 		var chatSession = {};
 		var resource = null;

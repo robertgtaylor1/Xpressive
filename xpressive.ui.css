@@ -486,6 +486,14 @@ textarea.disabled {
 	color: #CCCCCC;
 }
 
+/* x-data form styles */
+form label {
+	margin: 0 5px 0 0;
+}
+form input {
+	width: auto;
+}
+
 /* xml styles */
 .xml_punc {
 	color: #888888;

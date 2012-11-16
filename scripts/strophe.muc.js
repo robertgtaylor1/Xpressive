@@ -20,6 +20,7 @@ function Room(jid, name, conn) {
 	this.joined = false;
 	this.messages = [];
 	this.presenceResponse = {};
+	this.form = {};
 	Strophe.info("new room created: " + this.roomJid);
 }
 
@@ -43,6 +44,8 @@ Room.prototype = {
 		this.roomInfoResponse = iq;
 		Strophe.info("Room Description: " + this.description());
 		Strophe.info("Number Of Occupants: " + this.numberOfOccupants());
+		
+		this.form = Form.fromXML($(iq).find('x'));
 		
 		// notify user code of room change
 		$(document).trigger("room_changed", this);
