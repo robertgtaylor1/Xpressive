@@ -253,13 +253,16 @@
 			full_jid = $(message).attr('from');
 			jid = Strophe.getBareJidFromJid(full_jid);
 			Xpressive.log("Got message from: " + jid);
-			messageSender = (groupChat ? full_jid : jid);
 		}
 
 		jid_id = Xpressive.jid_to_id(jid);
 		chatTab = '#chat-' + jid_id;
 		groupChat = $(chatTab).data('groupChat') || false;
-
+		if (!messageSender)
+		{
+			messageSender = (groupChat ? full_jid : jid);
+		}
+		
 		if (!fromMe) {
 			if (groupChat){
 				name = Strophe.getResourceFromJid($(message).attr('from'));
@@ -855,6 +858,7 @@ $(document).ready(function() {
 			$(this).dialog('option', 'title', "Room : " + roomName);
 			var html = room.form.toHTML();
 			$(this).html(html);
+			$(this).find('form input').attr('readonly', true);
 		},
 		close : function() {
 			//TODO do something
@@ -887,6 +891,7 @@ $(document).ready(function() {
 			}
 		},
 		open : function() {
+			$('#room-nickname').val(Xpressive.connection.me.myDetails.getNickname());
 			this.passwordRequired = $(this).dialog('option', 'secure');
 			if (this.passwordRequired) {
 				$('#room-password-div').removeClass('hidden')
@@ -950,8 +955,9 @@ $(document).ready(function() {
 		$('#chat_dialog').dialog('open');
 	});
 
-	$(document).on('click', '.xmpp-change-details', function() {
+	$(document).on('click', '.xmpp-change-details', function(ev) {
 
+		ev.stopPropagation();
 		var $li = $(this).parents('li');
 		var jid = $li.find('div .roster-jid').text();
 
@@ -959,8 +965,9 @@ $(document).ready(function() {
 		$(document).trigger('modify_contact_details', contact);
 	});
 
-	$(document).on('click', '.xmpp-remove-contact', function() {
+	$(document).on('click', '.xmpp-remove-contact', function(ev) {
 
+		ev.stopPropagation();
 		var $li = $(this).parents('li');
 		var jid = $li.find('div .roster-jid').text();
 
@@ -968,15 +975,18 @@ $(document).ready(function() {
 		$(document).trigger('remove_contact', contact);
 	});
 
-	$(document).on('click', '.xmpp-chat-to', function() {
+	$(document).on('click', '.xmpp-chat-to', function(ev) {
 
+		ev.stopPropagation();
 		var $li = $(this).parents('li');
 		var jid = $li.find('div .roster-jid').text();
 
 		Xpressive.connection.roster.chatTo(jid);
 	});
 
-	$(document).on('click', '.room-name, .room-jid', function() {
+	$(document).on('click', '.room-name, .room-jid', function(ev) {
+		
+		ev.stopPropagation();
 		var $li = $(this).parents('li');
 		var jid = $li.find(".room-jid").text();
 
@@ -984,10 +994,12 @@ $(document).ready(function() {
 		$('#roomDetails_dialog').dialog('open');
 	});
 	
-	$(document).on('click', '.xmpp-join-room', function() {
+	$(document).on('click', '.xmpp-join-room', function(ev) {
+		
+		ev.stopPropagation();		
 		var $li = $(this).parents('li');
 		var jid = $li.find(".room-jid").text();
-		var name = $li.find(".room-name").text();
+		var name = Xpressive.connection.muc.getRoom(jid).roomName;
 		var secure = Xpressive.connection.muc.isRoomSecure(jid);		
 		var title = "Join: " + name;
 
@@ -997,13 +1009,17 @@ $(document).ready(function() {
 		$('#join_room_dialog').dialog('open');
 	});
 
-	$(document).on('click', '.xmpp-refresh-room', function() {
+	$(document).on('click', '.xmpp-refresh-room', function(ev) {
+		
+		ev.stopPropagation();		
 		var $li = $(this).parents('li');
 		var jid = $li.find(".room-jid").text();
 		Xpressive.connection.muc.refreshInfo(jid);
 	});
 
-	$(document).on('click', '.xmpp-add-contact', function() {
+	$(document).on('click', '.xmpp-add-contact', function(ev) {
+		
+		ev.stopPropagation();
 		$('#contact_dialog').dialog({ 'title' : "Add New Contact",
 									  'jid' : "@taylor-home.com", 
 									  'name' : "", 

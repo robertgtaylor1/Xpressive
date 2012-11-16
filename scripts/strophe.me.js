@@ -195,6 +195,7 @@ Strophe.addConnectionPlugin('me', (function() {
 		xa : xa,
 		dnd : dnd,
 		offline : offline,
-		myJid : myJid
+		myJid : myJid,
+		myDetails : myDetails
 	};
 })());
