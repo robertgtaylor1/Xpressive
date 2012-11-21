@@ -44,6 +44,16 @@
 	setSetting : function(key, value) {
 		Xpressive.setSettings({key: value});
 	},
+	
+	updateRoomName : function(roomJid, roomName) {
+		var id = Xpressive.jid_to_id(roomJid);
+		$('#chat-area > ul a[href="#chat-' + id + '"]').text(roomName);
+	},
+
+	updateContactName : function(contactJid, contactName) {
+		var id = Xpressive.jid_to_id(contactJid);
+		$('#roster-area > ul a[href="#' + id + '"]').text(contactName);
+	},
 
 	do_presence_changed : function(contact) {
 		if (contact === undefined){
@@ -89,26 +99,26 @@
 
 	do_room_changed: function(room){
 		var room_id = Xpressive.jid_to_id(room.roomJid);
+		var numberOfOccupants = room.numberOfOccupants();
 		var room_html = "<li id='" + room_id + "'>" + 
 							"<div class='room-entry'>" + 
 								"<div class='room-name'><span style='display:inline-block;'>" + room.roomName + "</span>";
-
-		var numberOfOccupants = room.numberOfOccupants();
-		if  (numberOfOccupants > 0) {
-			room_html += "&nbsp;<img class='ui-icon ui-icon-person xmpp-occupantCount' style='display:inline-block; vertical-align:bottom;'/>" +
-							"<div class='tooltip'>Number of occupants</div>" + 
-							"<span style='font-size:75%; vertical-align:center;'>("+ numberOfOccupants +")</span>";
-		}
 
 		if (room.requiresPassword()) {
 			room_html += "&nbsp;<img class='ui-icon ui-icon-key xmpp-protected' style='display:inline-block; vertical-align:bottom;'/>" +
 							"<div class='tooltip'>Password required</div>";
 		}
 
-		if (room.isModerator()){
+		room_html += "&nbsp;<img class='ui-icon ui-icon-pencil xmpp-configure-room' style='display:inline-block; vertical-align:bottom;'/>" +
+						"<div class='tooltip'>Modify Room Settings.</div>";
+						
+		if (room.iAmModerator()){
 			room_html += "&nbsp;<img class='ui-icon ui-icon-person xmpp-moderator' style='display:inline-block; vertical-align:bottom;'/>" +
 							"<div class='tooltip'>You are a moderator</div>";
 		}
+
+		room_html += "&nbsp;<img class='ui-icon ui-icon-close xmpp-destroy-room' style='display:inline-block; vertical-align:bottom;'/>" +
+						"<div class='tooltip'>Delete this Room.</div>";						
 
 		room_html += "<img class='ui-icon ui-icon-refresh xmpp-refresh-room' style='display:inline-block; vertical-align:bottom;'/>" +
 						"<div class='tooltip'>Click to refresh info</div>" +
@@ -118,12 +128,81 @@
 		room_html += "</div>";
 		//room_html += "<div class='room-description'>" + room.description();
 		room_html += "<div class='room-jid'>" + room.roomJid + "</div>" +
-							"</div>" + 
-						"</li>";
+								"<div><ul id='" + room_id + "-occupants' class='occupants-list";
+		if (numberOfOccupants === "0") {
+			room_html += " hidden";
+		}
+		room_html += "'><div style='display:inline-block;'><img class='ui-icon ui-icon-person xmpp-occupantCount' style='display:inline-block; vertical-align:bottom;'/>" +
+							"<span style='font-size:75%; vertical-align:center;'>("+ numberOfOccupants +") Room Occupants</span></div>";
 
-		Xpressive.insert_room(room_id, room_html);
+		if (numberOfOccupants !== "0") {
+			for ( var occupantName in room.occupants) {
+				room_html += this._getOccupantHtml(room.occupants[occupantName]);
+			}
+		}		
+		room_html += "</ul></div></div></li>";
+
+		Xpressive.insert_room(room_id, $(room_html));
+	},
+	
+	do_update_room_occupants : function(occupant) {
+		var fullJid = occupant.fullJid;
+		var roomJid = Strophe.getBareJidFromJid(fullJid);
+		var roomOccupants_id = Xpressive.jid_to_id(roomJid) + "-occupants";
+		var elem_id = Xpressive.occupantJid_to_id(fullJid);
+		var roomOccupantsList = $('ul#' + roomOccupants_id);
+		var occupant_html = this._getOccupantHtml(occupant);
+		Strophe.debug("Update occupants: " + occupant.toString());
+		var liElem = $("li#" + elem_id);
+		if (liElem && liElem.length > 0) {
+			$("li#" + elem_id).replaceWith(occupant_html);
+		} else {
+			roomOccupantsList.append($(occupant_html));
+		}
 	},
 
+	_getOccupantHtml : function(occupant) {
+		var elem_id = Xpressive.occupantJid_to_id(occupant.fullJid);
+		var status_html = "";
+		var status;
+		if (occupant.thisIsMe) {
+			status_html = " *me*"
+		} else { 
+			status = occupant.getStatus();
+			if (status.length > 0) {
+				status_html = " [" + status + "]";
+			}		
+		}
+		return "<li id='" + elem_id + "'>" + occupant.nickname() + status_html + "</li>";
+	},
+	
+	do_confirm_action : function(actionData) {
+		$('#confirmation_dialog').dialog('option', 'title', actionData.title);		
+		$('#confirmation_dialog').dialog('option', 'message', actionData.message);		
+		$('#confirmation_dialog').dialog('option', 'okHandler', actionData.onOk);		
+		$('#confirmation_dialog').dialog('option', 'cancelHandler', actionData.onCancel);		
+		$('#confirmation_dialog').dialog('option', 'hideReason', actionData.hideReason);		
+		$('#confirmation_dialog').dialog('option', 'userData', actionData.userData);		
+		$('#confirmation_dialog').dialog('open');				
+	},
+
+	do_destroy_room : function(actionData) {
+		$('#destroyRoom_dialog').dialog('option', 'title', actionData.title);		
+		$('#destroyRoom_dialog').dialog('option', 'message', actionData.message);		
+		$('#destroyRoom_dialog').dialog('option', 'okHandler', actionData.onOk);		
+		$('#destroyRoom_dialog').dialog('option', 'cancelHandler', actionData.onCancel);		
+		$('#destroyRoom_dialog').dialog('option', 'userData', actionData.userData);		
+		$('#destroyRoom_dialog').dialog('open');				
+	},
+
+	do_create_room : function(data) {
+		$('#form_dialog').dialog('option', 'title', "Configure Room [" + $(data.iq).attr('from') + "]");		
+		$('#form_dialog').dialog('option', 'formIQ', data.iq);
+		$('#form_dialog').dialog('option', 'okHandler', data.onOk);
+		$('#form_dialog').dialog('option', 'cancelHandler', data.onCancel);
+		$('#form_dialog').dialog('open');
+	},
+	
 	do_update_info : function(contact) {
 		var jid = contact.jid;
 		var jid_id = Xpressive.jid_to_id(jid);
@@ -144,7 +223,7 @@
 
 			if (sub === 'remove') {
 				// contact is being removed
-				$('#' + jid_id).remove();
+				$('#roster-area li#' + jid_id).remove();
 			} else {
 				// contact is being added or modified
 				var groups = contact.getGroups();
@@ -396,36 +475,7 @@
 	},
 
 	insert_contact : function(jid, elem) {
-		//var jid = elem.find('.roster-jid').text();
-		//var pres = Xpressive.presence_value(elem.find('.roster-contact'));
-
-		var contacts = $('#roster-area li');
-
-		if (contacts.length > 0) {
-			var inserted = false;
-			//			contacts.each(function() {
-			//				var cmp_pres = Xpressive.presence_value($(this).find('.roster-contact'));
-			//				var cmp_jid = $(this).find('.roster-jid').text();
-
-			//				if (pres > cmp_pres) {
-			//					$(this).before(elem);
-			//					inserted = true;
-			//					return false;
-			//				} else {
-			//					if (jid < cmp_jid) {
-			//						$(this).before(elem);
-			//						inserted = true;
-			//						return false;
-			//					}
-			//				}
-			//			});
-
-			if (!inserted) {
-				$('#roster-area ul').append(elem);
-			}
-		} else {
-			$('#roster-area ul').append(elem);
-		}
+		$('#roster-area ul').append(elem);
 	},
 
 	insert_room : function(room_id, elem) {
@@ -623,7 +673,7 @@ $(document).ready(function() {
 			}
 		},
 		open : function() {
-			$("#settings_dialog").keypress(function(e) {
+			$(this).keypress(function(e) {
 				if (e.keyCode == $.ui.keyCode.ENTER) {
 					$(this).parent().find("button:eq(0)").trigger("click");
 				}
@@ -632,6 +682,89 @@ $(document).ready(function() {
 			$('#settings-port').val($(this).dialog('option', 'port'));
 			$('#settings-resource').val($(this).dialog('option', 'resource'));
 			$('#settings-nickname').val($(this).dialog('option', 'nickname'));
+		}
+	});
+
+	$('#confirmation_dialog').dialog({
+		autoOpen : false,
+		dragable : false,
+		resizable: false,
+		modal : true,
+		title : 'Confirm',
+		buttons : {
+			"Cancel" : function() {
+				var cancelHandler = $(this).dialog('option', 'cancelHandler');
+				if (cancelHandler){
+					cancelHandler($(this).dialog('option', 'userData'));	
+				}
+				
+				$(this).dialog('close');
+			},
+			"Ok" : function() {
+				var okHandler = $(this).dialog('option', 'okHandler');
+				if (okHandler){
+					var reason = $('#confirmation-reason').val().trim();
+					okHandler(reason, $(this).dialog('option', 'userData'));	
+				}
+
+				$(this).dialog('close');
+			}
+		},
+		open : function() {
+			$(this).keypress(function(e) {
+				if (e.keyCode == $.ui.keyCode.ENTER) {
+					$(this).parent().find("button:eq(1)").trigger("click");
+				} else if (e.keyCode == $.ui.keyCode.ESCAPE) {
+					$(this).parent().find("button:eq(0)").trigger("click");
+				}
+			});
+			$('#confirmation-message').val($(this).dialog('option', 'message'));
+			var hideReason = $(this).dialog('option', 'hideReason');
+			if (hideReason) {
+				$('#confirmation-reason-div').addClass('hidden');				
+			} else {
+				$('#confirmation-reason-div').removeClass();
+			}
+		}
+	});
+
+	$('#destroyRoom_dialog').dialog({
+		autoOpen : false,
+		dragable : false,
+		resizable: false,
+		modal : true,
+		title : 'Destroy Room',
+		buttons : {
+			"Cancel" : function() {
+				var cancelHandler = $(this).dialog('option', 'cancelHandler');
+				if (cancelHandler){
+					cancelHandler($(this).dialog('option', 'userData'));	
+				}
+				
+				$(this).dialog('close');
+			},
+			"Ok" : function() {
+				var okHandler = $(this).dialog('option', 'okHandler');
+				if (okHandler){
+					var reason = $('#destroyRoom-reason').val().trim();
+					var altJid = $('#destroyRoom-altJid').val().trim().toLowerCase();
+					var password = $('#destroyRoom-password').val().trim();
+					var reason = $('#destroyRoom-reason').val().trim();
+					okHandler(reason, altJid, password, $(this).dialog('option', 'userData'));	
+				}
+
+				$(this).dialog('close');
+			}
+		},
+		open : function() {
+			$(this).keypress(function(e) {
+				if (e.keyCode == $.ui.keyCode.ENTER) {
+					$(this).parent().find("button:eq(1)").trigger("click");
+				} else if (e.keyCode == $.ui.keyCode.ESCAPE) {
+					$(this).parent().find("button:eq(0)").trigger("click");
+				}
+			});
+			$('#destroyRoom-message').html($(this).dialog('option', 'message'));
 		}
 	});
 
@@ -655,7 +788,7 @@ $(document).ready(function() {
 		open : function() {
 			var x = "input[value='" + $(this).dialog('option','currentStatus') + "']";
 			$(x, '#status_dialog').attr('checked', true); 
-			$("#status_dialog").keypress(function(e) {
+			$(this).keypress(function(e) {
 				if (e.keyCode == $.ui.keyCode.ENTER) {
 					$(this).parent().find("button:eq(0)").trigger("click");
 				}
@@ -692,7 +825,7 @@ $(document).ready(function() {
 			}
 		},
 		open : function() {
-			$("#login_dialog").keypress(function(e) {
+			$(this).keypress(function(e) {
 				if (e.keyCode == $.ui.keyCode.ENTER) {
 					$(this).parent().find("button:eq(0)").trigger("click");
 				}
@@ -757,7 +890,7 @@ $(document).ready(function() {
 			}
 			$(this).dialog('option', 'buttons', _buttons);
 
-			$("#contact_dialog").keypress(function(e) {
+			$(this).keypress(function(e) {
 				if (e.keyCode == $.ui.keyCode.ENTER) {
 					$(this).parent().find("button:eq(0)").trigger("click");			
 				}
@@ -798,7 +931,7 @@ $(document).ready(function() {
 		},
 		open : function() {
 			$("#approve-jid").text($(this).dialog('option', 'jid'));
-			$("#approve_dialog").keypress(function(e) {
+			$(this).keypress(function(e) {
 				if (e.keyCode == $.ui.keyCode.ENTER) {
 					$(this).parent().find("button:eq(0)").trigger("click");
 				} else if (e.keyCode == $.ui.keyCode.ESCAPE) {
@@ -825,12 +958,53 @@ $(document).ready(function() {
 			}
 		},
 		open : function() {
-			$("#chat_dialog").keypress(function(e) {
+			$(this).keypress(function(e) {
 				if (e.keyCode == $.ui.keyCode.ENTER) {
 					$(this).parent().find("button:eq(0)").trigger("click");
 				}
 			});
 		}
+	});
+
+	$('#form_dialog').dialog({
+		autoOpen : false,
+		draggable : true,
+		resizable : false,
+		modal : true,
+		width : 'auto',
+		title : '??',
+		buttons : {
+			"Cancel" : function() {
+				var cancelHandler = $(this).dialog('option', 'cancelHandler');
+				if (cancelHandler){
+					cancelHandler($(this).dialog('option', 'formIQ'));	
+				}
+				$(this).dialog('close');
+			},
+			"Ok" : function() {
+				var okHandler = $(this).dialog('option', 'okHandler');
+				if (okHandler){
+					okHandler($(this).dialog('option', 'formIQ'), $('form', this));	
+				}
+				$(this).dialog('close');
+			}
+		},
+		open : function() {
+			$(this).keypress(function(e) {
+				if (e.keyCode == $.ui.keyCode.ENTER) {
+					$(this).parent().find("button:eq(1)").trigger("click");
+				} else if (e.keyCode == $.ui.keyCode.ESCAPE) {
+					$(this).parent().find("button:eq(0)").trigger("click");
+				}
+			});
+			var iq = $(this).dialog('option', 'formIQ');
+			var xData = $(iq).find('x');
+			var form = Form.fromXML(xData);
+			$(this).html(form.toHTML());
+		},
+		close : function() {
+			//TODO do something
+		},
 	});
 
 	$('#roomDetails_dialog').dialog({
@@ -868,8 +1042,37 @@ $(document).ready(function() {
 	$('#roomDetails_dialog').bind('submit', function() {
 		$(this).dialog('close');
 	});
+
+	$('#createRoom_dialog').dialog({
+		autoOpen : false,
+		draggable : false,
+		resizable : false,
+		modal : true,
+		title : 'Create a Room',
+		buttons : {
+			"Create" : function() {
+				var nick = $('#newroom-nickname').val().trim();
+				var name = $('#newroom-name').val().trim().toLowerCase();
+
+				if (nick.length === 0 || name.length === 0 ) {					
+					return;
+				}				
+				Xpressive.connection.muc.createRoom(name, nick);
+
+				$(this).dialog('close');
+			}
+		},
+		open : function() {
+			$(this).keypress(function(e) {
+				if (e.keyCode == $.ui.keyCode.ENTER) {
+					$(this).parent().find("button:eq(0)").trigger("click");
+				}
+			});
+			$('#newroom-nickname').val($(this).dialog('option', 'nickname'));
+		}
+	});
 		 
-	$('#join_room_dialog').dialog({
+	$('#joinRoom_dialog').dialog({
 		autoOpen : false,
 		draggable : false,
 		resizable : false,
@@ -955,6 +1158,31 @@ $(document).ready(function() {
 		$('#chat_dialog').dialog('open');
 	});
 
+	$(document).on('click', '.xmpp-destroy-room', function(ev) {
+
+		ev.stopPropagation();
+		
+		var $li = $(this).parents('li');
+		var jid = $li.find(".room-jid").text();
+		var name = Xpressive.connection.muc.getRoom(jid).roomName;
+		
+		var dialogData = {
+			"title" : "Delete Room",
+			"message" : "You are about to delete room :<br/> <b>" + name + "</b><br/>Please confirm you action.",
+			"onOk" : function(reason, altRoomJid, altRoomPassword, userData) {
+				Strophe.info("Action: Destroy Room ["+ jid +"] confirmed.");
+				Xpressive.connection.muc.destroyRoom(jid, reason, altRoomJid, altRoomPassword);
+			},
+			"onCancel" : function() {
+				Strophe.info("Action: Destroy Room ["+ jid +"] cancelled.");
+				return;
+			},
+			"userData" : { "roomJid" : jid }
+		};
+		
+		$(document).trigger('destroy_room', dialogData);
+	});
+
 	$(document).on('click', '.xmpp-change-details', function(ev) {
 
 		ev.stopPropagation();
@@ -1003,10 +1231,10 @@ $(document).ready(function() {
 		var secure = Xpressive.connection.muc.isRoomSecure(jid);		
 		var title = "Join: " + name;
 
-		$('#join_room_dialog').dialog({ 'title' : title, 
+		$('#joinRoom_dialog').dialog({ 'title' : title, 
 										'secure' : secure, 
 										'jid' : jid });
-		$('#join_room_dialog').dialog('open');
+		$('#joinRoom_dialog').dialog('open');
 	});
 
 	$(document).on('click', '.xmpp-refresh-room', function(ev) {
@@ -1015,6 +1243,22 @@ $(document).ready(function() {
 		var $li = $(this).parents('li');
 		var jid = $li.find(".room-jid").text();
 		Xpressive.connection.muc.refreshInfo(jid);
+	});
+	
+	$(document).on('click', '.xmpp-configure-room', function(ev) {
+		
+		ev.stopPropagation();		
+		var $li = $(this).parents('li');
+		var jid = $li.find(".room-jid").text();
+		Xpressive.connection.muc.configureRoom(jid);
+	});
+	
+	$(document).on('click', '.xmpp-new-room', function(ev) {
+
+		ev.stopPropagation();
+		// request room name & nickname
+		$('#createRoom_dialog').dialog('option', 'nickname', Xpressive.connection.me.myDetails.getNickname());
+		$('#createRoom_dialog').dialog('open');
 	});
 
 	$(document).on('click', '.xmpp-add-contact', function(ev) {
@@ -1117,7 +1361,7 @@ $(document).ready(function() {
 	});
 
 	$(document).on('keypress', '.chat-topic', function(ev) {
-		var jid = $(this).parent().data('jid');
+		var jid = $(this).parent().parent().data('jid');
 		var groupChat = $(this).parent().data('groupChat');
 
 		if (ev.which === 13) {
@@ -1375,6 +1619,12 @@ $(document).bind('room_changed', function(ev, data) {
 	Xpressive.do_room_changed(data);
 });
 
+$(document).bind('create_room_form', function(ev, data) {
+	Xpressive.log("Create Room Event.");
+
+	Xpressive.do_create_room(data);
+});
+
 $(document).bind('presence_changed', function(ev, data) {
 	Xpressive.log("Presence Changed Event.");
 
@@ -1430,4 +1680,29 @@ $(document).bind('my_status_changed', function(ev, details) {
 
 $(document).bind('save_settings', function(ev, newSettings) {
 	Xpressive.setSettings(newSettings);
+});
+
+$(document).bind('roomname_changed', function(ev, room) {
+	Xpressive.updateRoomName(room.roomJid, room.roomName);
+});
+
+$(document).bind('contactname_changed', function(ev, contact) {
+	Xpressive.updateContactName(contact.jid, contact.name);
+});
+
+$(document).bind('destroy_room', function(ev, data) {
+	Xpressive.do_destroy_room(data);	
+});
+
+$(document).bind('remove_room_from_list', function(ev, jid) {
+	var jid_id = Xpressive.jid_to_id(jid);
+	$('#muc-area li#' + jid_id).remove();
+});
+
+$(document).bind('confirm_action', function(ev, data) {
+	Xpressive.do_confirm_action(data);	
+});
+
+$(document).bind('update_room_occupants', function(ev, occupant) {
+	Xpressive.do_update_room_occupants(occupant);
 });

@@ -1,33 +1,139 @@
-function Occupant(jid) {
-	this.name = Strophe.getResourceFromJid(jid);
-	this.status = "available";
+function Capabilities(caps) {
+	this.c = $(caps);
 }
 
+Capabilities.prototype = {
+		
+	ver : function() { 
+		return this.c.attr('ver'); 
+	},
+	
+	node : function() {
+		return this.c.attr('node');
+	},
+};
+
+function Occupant(jid) {
+	this.item = {};
+	this.fullJid = jid;
+	this.capabilities = {};
+	this.show = "";
+	this.status = "";
+	thisIsMe = false;
+};
+
 Occupant.prototype = {
+	
+	nickname : function () {
+		return Strophe.getResourceFromJid(this.fullJid);
+	},
+	 
+	getStatus : function() {
+		if (this.role === 'none')
+			return 'unavailable';
+		return this.status;
+	},
+	
+	affiliation : function() {
+		var _affiliation = "none";
+		
+		if (this.item) {
+			_affiliation = this.item.attr('affiliation') || "none";
+		}
+		return _affiliation;
+	},
+	
+	role : function() {
+		var _role = "none";
+		
+		if (this.item) {
+			_role = this.item.attr('role') || "none";
+		}
+		return _role;
+	},
+	
+	realJid : function() {
+		return this.item ? this.item.attr('jid') || null : null;
+	},
+	
+	isThisMe : function() {
+		 return this.thisIsMe;
+	},
+	 
 	startChat : function(jid) {
 		var myName = Strophe.getResourceFromJid(jid);
 		//TODO: add support
+	},
+	
+	presenceUpdate : function(pres) {
+		this.item = pres.find('item');
+		var capsElem = pres.find('c');
+		if (capsElem && capsElem.length > 0) {
+			this.capabilitiesUpdate(capsElem);
+		}
+		var statusElem = $(pres).find('status');
+		if (statusElem && statusElem.length > 0) {
+			this.status = statusElem.text();
+		}
+		var showElem = $(pres).find('show');
+		if (showElem && showElem.length > 0) {
+			this.show = showElem.text();
+		}
+		var xElem = $(pres).find("x status[code='110']");
+		if (xElem && xElem.length > 0)
+			this.thisIsMe = true;
+	},
+	
+	capabilitiesUpdate : function(caps) {
+		this.capabilities = new Capabilities(caps);
+	},
+	
+	toString : function() {
+		return "Occupant: Nickname=" + this.nickname() + ", " +
+						 "RealJid=" + this.realJid() + ", " + 
+						 "isThisMe=" + this.isThisMe() + ", " +	
+						 "affiliation=" + this.affiliation() + ", " + 	
+						 "role=" + this.role() + ", " + 	
+						 "status=" + this.getStatus() + ", " + 	
+						 "show=" + this.show + ". "; 	
 	}
 };
 
 function Room(jid, name, conn) {
 	this.roomJid = jid;
-	this.nickname = "";
+	this.myNickname = "";
+	this.myAffiliation = "none";
+	this.myRole = "none";
 	this.connection = conn;
 	this.roomName = name;
 	this.roomInfoResponse = {};
-	this.occupants = [];
+	this.occupants = {};
 	this.joined = false;
 	this.messages = [];
 	this.presenceResponse = {};
 	this.form = {};
+	this.isConfigured = true;
 	Strophe.info("new room created: " + this.roomJid);
 }
 
 Room.prototype = {
-
+	
+	canModifySubject : function() {
+		if (roomInfoResponse) {
+			var fld = $(roomInfoResponse).find('field[var="muc#roominfo_subjectmod"]');
+			if (fld) {
+				value = $(fld).find('value').text();
+				if (value === "1")
+					return true;	
+			}		
+		}
+		if (this.iAmAdmin())
+			return true;
+		return false;
+	},
+	
 	getInfo : function() {
-		Strophe.info("get room info for: " + this.roomJid);
+		Strophe.info("Room: get room info for: " + this.roomJid);
 		var attrs = {
 			xmlns : Strophe.NS.DISCO_INFO
 		};
@@ -36,12 +142,17 @@ Room.prototype = {
 			type : 'get'
 		}).c('query', attrs);
 
-		this.connection.sendIQ(roomInfoIq, this.roomInfo.bind(this), this.roomInfoError.bind(this));
+		this.connection.sendIQ(roomInfoIq, this.roomInfoResult.bind(this), this.roomInfoError.bind(this));
 	},
 
-	roomInfo : function(iq) {
+	roomInfoResult : function(iq) {
 		Strophe.info("got room info for: " + this.roomJid);
 		this.roomInfoResponse = iq;
+		var name = $(iq).find('identity').attr('name');
+		if (name && this.roomName !== name) {
+			this.roomName = name;
+			$(document).trigger("roomname_changed", this);			
+		}
 		Strophe.info("Room Description: " + this.description());
 		Strophe.info("Number Of Occupants: " + this.numberOfOccupants());
 		
@@ -52,7 +163,7 @@ Room.prototype = {
 	},
 
 	roomInfoError : function() {
-		Strophe.error("ERROR: for room info: " + this.roomJid);
+		Strophe.error("Room ERROR: for room info: " + this.roomJid);
 	},
 
 	description : function() {
@@ -80,14 +191,18 @@ Room.prototype = {
 		}
 		return val;
 	},
+	
+	rejoin : function() {
+		this.connection.chat.joinRoomChat(this.roomJid);		
+	},
 
 	join : function(nickname, password) {
-		Strophe.info("join room: " + this.roomJid);
+		Strophe.info("Room: join room: " + this.roomJid);
 		
-		this.nickname = nickname;
+		this.myNickname = nickname;
 		var pw = (password ? password.trim() : "");
 		var presence = $pres({
-			to : this.roomJid + "/" + this.nickname
+			to : this.roomJid + "/" + this.myNickname
 		}).c('x', {xmlns : Strophe.NS.MUC});
 		if (pw.length > 0){
 			presence.c('password', null, pw);
@@ -105,7 +220,7 @@ Room.prototype = {
 		Strophe.info("leave room: " + this.roomJid);
 		
 		var leaveIq = $pres({
-			to : this.roomJid + "/" + this.nickname,
+			to : this.roomJid + "/" + this.myNickname,
 			type : 'unavailable'});
 		this.connection.send(leaveIq);
 		this.getInfo();
@@ -118,8 +233,6 @@ Room.prototype = {
 			to : this.roomJid,
 			type : 'groupchat'
 		}).c('body').t(messageText);
-
-		//this.messages.push(message);
 
 		this.connection.send(message);
 	},
@@ -144,22 +257,30 @@ Room.prototype = {
 		return isSecure;
 	},
 
-	isModerator : function() {
+	iAmModerator : function() {
+		return (this.myRole === 'moderator');
+	},
+
+	iAmOwner : function() {
+		return (this.myAffiliation === 'owner');
+	},
+
+	iAmMember : function() {
+		return (this.iAmModerator || this.myRole === 'participant');
+	},
+
+	iAmAdmin : function() {
+		return (this.iAmOwner || this.myAffiliation === 'administrator');
+	},
+
+	iAmBanned : function() {
 		return false;
 	},
 
-	isOwner : function() {
+	iHaveVoice : function() {
 		return true;
 	},
-
-	isMember : function() {
-		return false;
-	},
-
-	isAdmin : function() {
-		return true;
-	},
-
+	
 	queryOccupants : function() {
 		var attrs, info;
 		attrs = {
@@ -170,41 +291,49 @@ Room.prototype = {
 			to : roomJid,
 			type : 'get'
 		}).c('query', attrs);
-		this.connection.sendIQ(info, this._occupantsInfo, this._errorInfo);
+		this.connection.sendIQ(info, this._occupantsInfo.bind(this), this._errorInfo.bind(this));
 	},
 
 	_occupantsInfo : function(iq) {
-		Strophe.info("got occupants info for: " + this.roomJid);
+		Strophe.info("Room: got occupants info for: " + this.roomJid);
 		var infoIq = $(iq);
 	},
 
 	_errorInfo : function(iq) {
-		Strophe.info("ERROR: for occupants info for: " + this.roomJid);
+		Strophe.info("Room ERROR: for occupants info for: " + this.roomJid);
 		var errorIq = $(iq);
 	},
 
-	addOccupant : function(jid) {
-		Strophe.info("add occupant to room: " + jid);
-		var newOccupant = new Occupant(jid);
-		this.occupants.push(newOccupant);
+	addOccupant : function(jid, pres) {
+		return this._addOccupant(jid, pres);
 	},
 
-	removeOccupant : function(jid) {
-		Strophe.info("remove occupant from room: " + jid);
-		var occupantName = Strophe.getResourceFromJid(jid);
-		for (var i = this.occupants.length - 1; i >= 0; i--) {
-			if (occupantName === this.occupants[i].name) {
-				this.occupants.splice(i, 1);
-				return true;
-			}
+	_addOccupant : function(jid, pres) {
+		var occupant = this.findOccupant(jid);
+		if (!occupant) {
+			occupant = new Occupant(jid);
+			this.occupants[occupant.nickname()] = occupant;
 		}
-		return false;
+		occupant.presenceUpdate(pres);
+		return occupant;
+	},
+	
+	findOccupant : function(jid) {
+		var nickname = Strophe.getResourceFromJid(jid);
+		return this.occupants[nickname];	
+	},
+	
+	removeOccupant : function(jid) {
+		Strophe.info("Room: remove occupant from room: " + jid);
+		delete this.occupants[Strophe.getResourceFromJid(jid)];
+		return true;
 	},
 
-	updateOccupant : function(stanza) {
-		Strophe.info("update room occupant: ??");
-
-	}
+	updateOccupant : function(pres) {
+		var occupantJid = $(pres).attr('from');
+		Strophe.info("Room: update room occupant: " + occupantJid);
+		return this._addOccupant(occupantJid, pres);
+	},
 };
 
 function Server(jid, conn) {
@@ -213,14 +342,14 @@ function Server(jid, conn) {
 	this.serverInfoResponse = {};
 	this.serverItemsResponse = {};
 	this.rooms = {};
-	Strophe.info("new server created: " + this.serverJid);
+	Strophe.info("Server: new server created: " + this.serverJid);
 }
 
 Server.prototype = {
 
 	// This gets the MUC info
 	getInfo : function() {
-		Strophe.info("get server info for: " + this.serverJid);
+		Strophe.info("Server: get info for: " + this.serverJid);
 
 		var serverInfoIq = $iq({
 			to : this.serverJid,
@@ -231,8 +360,14 @@ Server.prototype = {
 		this.connection.sendIQ(serverInfoIq, this.serverInfo.bind(this), this.serverInfoError.bind(this));
 	},
 
+	removeFromList : function(roomJid) {
+		delete this.rooms[roomJid];
+		// update the UI room list
+		$(document).trigger('remove_room_from_list', roomJid);		
+	},
+
 	serverInfo : function(iq) {
-		Strophe.info("got server info for: " + this.serverJid);
+		Strophe.info("Server: got info for: " + this.serverJid);
 
 		this.serverInfoResponse = iq;
 
@@ -243,7 +378,7 @@ Server.prototype = {
 		}).c("query", {
 			xmlns : Strophe.NS.DISCO_ITEMS
 		});
-		Strophe.info("get server items for: " + this.serverJid);
+		Strophe.info("Server: get items for: " + this.serverJid);
 		this.connection.sendIQ(serverItemsIq, this.serverItems.bind(this), this.serverItemsError.bind(this));
 	},
 
@@ -254,7 +389,7 @@ Server.prototype = {
 	},
 
 	serverItems : function(iq) {
-		Strophe.info("got server items for: " + this.serverJid);
+		Strophe.info("Server: got items for: " + this.serverJid);
 
 		var room;
 		this.serverItemsResponse = $(iq);
@@ -270,7 +405,7 @@ Server.prototype = {
 	},
 
 	serverItemsError : function(iq) {
-		Strophe.error("ERROR: get server items for: " + this.serverJid);
+		Strophe.error("Server ERROR: get server items for: " + this.serverJid);
 
 		var errorIq = $(iq);
 	},
@@ -298,7 +433,37 @@ Server.prototype = {
 		var roomJid = Strophe.getBareJidFromJid(jid);
 		var room = this.rooms[roomJid];
 		return room;
-	}
+	},
+	
+	destroyRoom : function(jid, reason, altRoomJid, altRoomPassword) {
+		var roomJid = Strophe.getBareJidFromJid(jid);		
+		// Build Destroy Iq
+		var destroyIq = $iq({
+			"to" : roomJid,
+			"type" : "set"
+		}).c('query', {
+			"xmlns" : Strophe.NS.MUC_OWNER
+		});
+		
+		if (altRoomJid) {
+			destroyIq.c('destroy', { "jid": altRoomJid })
+		} else {
+			destroyIq.c('destroy')
+		}
+		if (altRoomPassword) {
+			destroyIq.c('password').t(altRoomPassword).up();
+		}
+		if (reason) {
+		 	destroyIq.c('reason').t(reason);
+		}
+		
+		this.connection.sendIQ(destroyIq.tree(), this._roomDestroyed.bind(this));
+	},
+	
+	_roomDestroyed : function(iq) {
+		var roomJid = $(iq).attr('from');
+		this.removeFromList(roomJid);
+	},	
 };
 
 function Servers(connection) {
@@ -307,6 +472,17 @@ function Servers(connection) {
 }
 
 Servers.prototype = {
+	
+	refresh : function(jid) {
+		if (jid) {
+			this.getServer(jid).getInfo();
+		} else {
+			for (var serverJid in this.servers)
+			{
+				this.servers[serverJid].getInfo();
+			}
+		}
+	},
 
 	addServer : function(jid) {
 		var serverJid = Strophe.getDomainFromJid(jid);
@@ -316,6 +492,7 @@ Servers.prototype = {
 
 	removeServer : function(jid) {
 		var serverJid = Strophe.getDomainFromJid(jid);
+		
 		delete this.servers[serverJid];
 	},
 
@@ -348,6 +525,13 @@ Servers.prototype = {
 		var server = this.servers[serverJid];
 		return server;
 	},
+
+	getMyServer : function() {
+		// this will get the first server in the object
+		// TODO: really need to be better at this as there may be multiple servers
+		//       and this needs to be 'my' server
+		return this.servers[Object.keys(this.servers)[0]];
+	},
  
 	getRoom : function(jid) {
 		var room = null;
@@ -357,11 +541,29 @@ Servers.prototype = {
 		}
 		return room;
 	},
+	
+	destroyRoom : function(jid, reason, altRoomJid, altRoomPassword) {
+		var room = null;
+		var server = this.getServer(jid);
+		if (server){
+			server.destroyRoom(jid, reason, altRoomJid, altRoomPassword);
+		}
+	},
+	
+	updatePresence : function(pres) {
+		var jid = $(pres).attr('from');
+		var room = this.getRoom(jid);
+		var occupant;
+		if (room) {
+			occupant = room.updateOccupant(pres);
+		}
+		return occupant;
+	}
 };
 
 Strophe.addConnectionPlugin('muc',(function() {
 	var init, statusChanged, processDiscoItems, join, leave, isRoomSecure, 
-	    handlePresence, getRooms, createRoom;
+	    handlePresence, getRoom, getRooms, createRoom, configureRoom;
 	// local variables
 	var _connection, _servers;
 	    
@@ -371,13 +573,16 @@ Strophe.addConnectionPlugin('muc',(function() {
 		_connection = connection;
 		_servers = {};
 
-		Strophe.addNamespace('MUC', 'jabber:iq:muc');
+		Strophe.addNamespace('MUC_USER', 'http://jabber.org/protocol/muc#user');
+		Strophe.addNamespace('MUC_OWNER', 'http://jabber.org/protocol/muc#owner');
+		Strophe.addNamespace('X_DATA', 'jabber:x:data');
 	};
 
 	// called when connection status is changed
 	statusChanged = function(status) {
 		if (status === Strophe.Status.CONNECTED) {
 			_servers = new Servers(_connection);
+			//_connection.addHandler(this.handlePresence.bind(this), Strophe.NS.MUC, "presence");
 			_connection.addHandler(this.handlePresence.bind(this), Strophe.NS.MUC_USER, "presence");
 
 		} else if (status === Strophe.Status.DISCONNECTED) {
@@ -402,7 +607,7 @@ Strophe.addConnectionPlugin('muc',(function() {
 
 	join = function(roomJid, nickname, password) {
 		var room = _servers.getRoom(roomJid);
-		room.nickname = nickname;
+		room.myNnickname = nickname;
 
 		$(document).trigger('join_room', room);
 
@@ -411,7 +616,7 @@ Strophe.addConnectionPlugin('muc',(function() {
 
 	leave = function(roomJid) {
 		var room = _servers.getRoom(roomJid);
-		//room.nickname = null;
+		//room.myNickname = null;
 		room.leave();
 	};
 
@@ -426,41 +631,156 @@ Strophe.addConnectionPlugin('muc',(function() {
 	handlePresence = function(stanza) {
 		var nickname;
 		var presence = $(stanza);
+		var presType = presence.attr('type');
 		var from = presence.attr('from');
 		var room = _servers.getRoom(from);
-		if (room) {
+		var occupant;
+		if (room && room.isConfigured) {
+			Strophe.info("[MUC] Presence received for: " + from);
+	
+			occupant = _servers.updatePresence(presence);
 			nickname = Strophe.getResourceFromJid(from);
-			if (nickname === room.nickname) {
-				room.presenceResponse = stanza;
-				Strophe.info("Presence received for: " + from);
+			if (nickname === room.myNickname) {
+				// this is me
+				if (presType === 'unavaliable') {
+					// I have left the room
+				}
+			} else {
+				if (presType === 'unavaliable') {
+					// Someone has left the room
+				} else {
+					// Someone has joined the room or changed status
+				}				
 			}
+			$(document).trigger("update_room_occupants", occupant);
 		} else {
-			Strophe.info("Presence ignored for: " + from);
+			Strophe.info("[MUC] Presence for new room: " + from);
+			// request room config
+			_requestRoomForm(from);
 		}
 		return true;
+	};	
+
+	_requestRoomForm = function(roomJid) {
+		var iq = $iq({
+			type: "get",
+			to: Strophe.getBareJidFromJid(roomJid)
+		}).c('query', {xmlns: Strophe.NS.MUC_OWNER});
+			
+		_connection.sendIQ(iq, _formRequestHandler.bind(this), _formRequestErrorHandler.bind(this));
+	};
+	
+	_formRequestHandler = function(iq) {
+		// notify user code of room change
+		$(document).trigger("create_room_form", {"iq" : iq, "onOk": configureThisRoom, "onCancel": cancelThisRoom });			
+	};
+	
+	_formRequestErrorHandler = function(iq) {
+		Strophe.error("Create Room Form request failed.")
+	};
+	
+	var configureThisRoom = function(iq, form) {
+		var xform = Form.fromHTML(form);
+		xform.type = "submit";					
+		var xml = xform.toXML();
+		
+		var iqResponse = $iq({
+				to : $(iq).attr('from'),
+				type : "set"
+			})
+			.c('query', {
+				xmlns : Strophe.NS.MUC_OWNER
+			})
+			.cnode(xml);
+			
+		_connection.sendIQ(iqResponse.tree(), this.on_configure_room_result.bind(this), this.on_create_room_error.bind(this));		
+	};
+	
+	var cancelThisRoom = function(iq) {
+		var roomJid = $(iq).attr('from');
+		var iqResponse = $iq({
+				to : roomJid,
+				type : "set"
+			})
+			.c('query', {
+				xmlns : Strophe.NS.MUC_OWNER
+			})
+			.c('x', {
+				xmlns : Strophe.NS.X_DATA, 
+				type : "cancel"
+			});
+			
+		_connection.sendIQ(iqResponse.tree());
+		_servers.removeFromList(roomJid);
+	};
+	
+	on_configure_room_result = function(iq) {
+		var from = $(iq).attr('from');
+		// add room to list
+		refreshInfo(from);
+		// now join it
+		var room = getRoom(from);
+		if (!room.isConfigured) {	
+			room.isConfigured = true;	
+			room.rejoin();
+		}
+	};
+	
+	on_create_room_error = function(iq) {
+		
 	};
 	
 	refreshInfo = function(jid) {
 		_servers.getRoom(jid).getInfo();
-	}
+	};
 
+	isServer = function(jid) {
+		var server = _servers.getServer(jid);
+		if (server)
+			return true;
+		return false;
+	};
+	
 	getRoom = function(jid) {
 		return _servers.getRoom(jid);
 	};
 
-	createRoom = function(server, name) {
-		// TODO
+	createRoom = function(roomName, nickname) {
+		var myServer = _servers.getMyServer();
+		var roomJid = roomName + "@" + myServer.serverJid;
+		var newRoom = new Room(roomJid, "[" + roomName + "]...not configured", _connection);
+		newRoom.isConfigured = false;
+		myServer.rooms[roomJid] = newRoom;
+		
+		// request form
+		var request = $pres({
+				to : roomJid + "/" + nickname,
+			}).c('x', {xmlns : Strophe.NS.MUC});
+		
+		_connection.send(request);
 	};
 	
+	destroyRoom = function(jid, reason, altRoomJid, altRoomPassword) {
+		_servers.destroyRoom(jid, reason, altRoomJid, altRoomPassword);
+	};
+	
+	configureRoom = function(roomJid) {
+		_requestRoomForm(roomJid);
+	};
+
 	return {
 		init : init, 
 		statusChanged : statusChanged,  
 		processDiscoItems : processDiscoItems, 
 		join : join, 
 		leave : leave, 
+		isServer : isServer,
 		isRoomSecure : isRoomSecure, 
 	    getRoom : getRoom, 
 	    createRoom : createRoom,
-	    refreshInfo : refreshInfo
+	    destroyRoom : destroyRoom,
+	    refreshInfo : refreshInfo,
+	    handlePresence : handlePresence,
+	    configureRoom : configureRoom
 	}
 })());

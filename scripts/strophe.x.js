@@ -18,12 +18,14 @@ helper = {
     return _results;
   },
   createHtmlFieldCouple: function(f) {
-    var div, id, xclass;
-    div = $("<div>");
-    id = "Strophe.x.Field-" + f.type + "-" + f["var"];
+    var tr, id, xclass, td1, td2;
+    tr = $("<tr>"); 
+    id = "Strophe-x-Field-" + f.type + "-" + f["var"].replace(/#/g, "-");
     xclass = " class='Field-" + f.type + "' ";
-    div.append("<label" + xclass + "for='" + id + "'>" + (f.label ? f.label + " : " : "") + "</label>").append($(f.toHTML()).attr("id", id)).append("<br />");
-    return div.children();
+    td1 = $("<td>").append("<label" + xclass + "for='" + id + "'>" + f.label + "</label>")
+    td2 = $("<td>").append($(f.toHTML()).attr("id", id));
+    tr.append(td1).append(td2);
+    return tr;
   },
   getHtmlFields: function(html) {
     html = $(html);
@@ -166,11 +168,13 @@ Form = (function() {
     if (this.instructions) {
       form.append("<p class='x-instructions'>" + this.instructions + "</p>");
     }
+    table = $("<table>");
+    table.appendTo(form);
     if (this.fields.length > 0) {
       _ref = this.fields;
       for (_i = 0, _len = _ref.length; _i < _len; _i++) {
         f = _ref[_i];
-        (helper.createHtmlFieldCouple(f)).appendTo(form);
+        (helper.createHtmlFieldCouple(f)).appendTo(table);
       }
     } else if (this.items.length > 0) {
       _ref1 = this.items;
@@ -457,8 +461,9 @@ Field = (function() {
   Field.prototype.toHTML = function() {
     var el, k, line, o, opt, txt, val, _i, _j, _len, _len1, _ref, _ref1, _ref2;
     var xclass = "Field-" + this.type.toLowerCase();
+    var fieldType = this.type.toLowerCase();
     
-    switch (this.type.toLowerCase()) {
+    switch (fieldType) {
       case 'list-single':
       case 'list-multi':
         el = $("<select>");
@@ -508,7 +513,7 @@ Field = (function() {
       case 'fixed':
       case 'jid-single':
         el = $("<input>");
-        if (this.values) {
+        if (this.values && fieldType !== 'boolean') {
           el.val(this.values[0]);
         }
         switch (this.type.toLowerCase()) {
@@ -519,7 +524,7 @@ Field = (function() {
           case 'boolean':
             el.attr('type', 'checkbox');
             val = (_ref2 = this.values[0]) != null ? typeof _ref2.toString === "function" ? _ref2.toString() : void 0 : void 0;
-            if (val && (val === "true" || val === "1")) {
+            if (this.values[0] && (this.values[0] === "true" || this.values[0] === "1")) {
               el.attr('checked', 'checked');
             }
             break;
@@ -659,14 +664,16 @@ Field = (function() {
           f.values = txt.split('\n');
         }
         break;
-      case 'text-single':
       case 'boolean':
+		f.values = [ html.attr('checked') ? "1" : "0" ];
+		break;
+      case 'text-single':
       case 'text-private':
       case 'hidden':
       case 'fixed':
       case 'jid-single':
         if (html.val().trim() !== "") {
-          f.values = [html.val()];
+          f.values = [ html.val() ];
         }
     }
     return f;

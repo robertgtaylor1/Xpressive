@@ -49,7 +49,10 @@ Contact.prototype = {
 		Strophe.debug("Contact.update for: " + this.jid);
 
 		if (_name !== undefined) {
-			this.name = _name;
+			if (this.name !== _name) {
+				this.name = _name;
+				$(document).trigger('contactname_changed', this);
+			}
 		}
 		var _subscription = item.attr('subscripton');
 		if (_subscription !== undefined){
@@ -189,6 +192,12 @@ Contacts.prototype = {
 		}
 		var contact = this.list[jid];
 		if (!contact) {
+			// it might be a room
+			if (Xpressive.connection.muc.isServer(jid))
+			{
+				//Xpressive.connection.muc.handlePresence(presence);
+				return true;
+			}
 			// This is someone we don't have on our roster so pop-up the dialog
 			if (ptype === "subscribe") {
 				$(document).trigger("ask_subscription", jid);

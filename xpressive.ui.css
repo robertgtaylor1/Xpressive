@@ -164,6 +164,18 @@ textarea.disabled {
 	color: green;	
 }
 
+#muc-area .occupants-list li:before  {
+	content:'\2022';
+	display: block;
+	position: relative;
+	max-width: 0px;
+	max-height: 0px;
+	left: -15px;
+	top: 0px;
+	font-size: 10px;
+	color: darkgrey;	
+}
+
 #content {
 	height: auto;
 	width: 100%;
@@ -490,6 +502,15 @@ textarea.disabled {
 form label {
 	margin: 0 5px 0 0;
 }
+
+form h1 {
+	font-size: 14;
+}
+
+.Field-hidden {
+	display: none;
+}
+
 form input {
 	width: auto;
 }

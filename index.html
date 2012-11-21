@@ -68,6 +68,16 @@
 					<!-- Muc area -->
 					<div id='muc-area' class='ui-corner-all ui-widget-content ui-resize hidden'>
 						<h3 class='ui-widget-header ui-corner-all ui-list' >Chat Rooms</h3>
+						<div style='display : inline-block'>
+							<img class='ui-icon ui-icon-home xmpp-new-room' style='display:inline-block; vertical-align:bottom;'/>
+								<div class='tooltip'>Create New Room.</div>
+							&nbsp;<img class='ui-icon ui-icon-cancel xmpp-cancel' style='display:inline-block; vertical-align:bottom;'/>
+								<div class='tooltip'>Cancel Room.</div>
+							&nbsp;<img class='ui-icon ui-icon-notice xmpp-notice' style='display:inline-block; vertical-align:bottom;'/>
+								<div class='tooltip'>Notice Room.</div>
+							&nbsp;<img class='ui-icon ui-icon-signal xmpp-signal' style='display:inline-block; vertical-align:bottom;'/>
+								<div class='tooltip'>Signal Room.</div>
+						</div>						
 						<ul></ul>
 					</div>
 					<div class='vertical-divider ui-resize'><span>|</span></div>
@@ -79,9 +89,25 @@
 			</div>
 		</div>
 
+		<!-- TODO: form dialog-->
+		<div id='form_dialog' class='hidden'>
+			Form goes here.
+		</div>
+
 		<!-- TODO: room details dialog-->
 		<div id='roomDetails_dialog' class='hidden'>
 			Details go here.
+		</div>
+
+		<!-- TODO: create room dialog-->
+		<div id='createRoom_dialog' class='hidden'>
+			<label>Name for New Room:</label>
+			<br/>
+			<input type='text' id='newroom-name'>
+			<br/>
+			<label>Enter a nickname:</label>
+			<br/>
+			<input type='text' id='newroom-nickname'>
 		</div>
 
 		<!-- TODO: settings dialog-->
@@ -113,12 +139,43 @@
 			<label for='login-password'> Password:</label>
 			<br/>
 			<input type='password' id='login-password' />
+			<div class=hidden>				
+				<label for='login-resource'> Resource:</label>
+				<br/>
+				<input type='text' id='login-resource' />
+			</div>
+		</div>
+		
+		<!-- TODO: destroyRoom dialog -->
+		<div id='destroyRoom_dialog' class='hidden'>
+			<label id='destroyRoom-message'>MESSAGE</label>
 			<br/>
-			<label for='login-resource'> Resource:</label>
+			<span>The following information is optional...</span>
 			<br/>
-			<input type='text' id='login-resource' />
+			<label for='destroyRoom-reason'>Reason:</label>
+			<br/>
+			<input type='text' id='destroyRoom-reason' />
+			<br/>
+			<label for='destroyRoom-altJid'>Alternative room:</label>
+			<br/>
+			<input type='text' id='destroyRoom-altJid'/>
+			<br/>
+			<label for='destroyRoom-password'>...and password (if required):</label>
+			<br/>
+			<input type='text' id='destroyRoom-password'>
 		</div>
 
+		<!-- TODO: confirmation dialog -->
+		<div id='confirmation_dialog' class='hidden'>
+			<label id='confirmation-message'>MESSAGE</label>
+			<div id='confirmation-reason-div' >
+				<br/>
+				<label for='confirmation-reason'>Reason:</label>
+				<br/>
+				<input type='text' id='confirmation-reason'>
+			</div>
+		</div>
+		
 		<!-- TODO: contact dialog -->
 		<div id='contact_dialog' class='hidden'>
 			<label for='contact-jid'>JID:</label>
@@ -142,7 +199,7 @@
 		</div>
 
 		<!-- TODO: join room dialog -->
-		<div id='join_room_dialog' class='hidden'>
+		<div id='joinRoom_dialog' class='hidden'>
 			<label>Room:</label><span id='room-name'></span>
 			<br/>
 			<label>Enter a nickname:</label>

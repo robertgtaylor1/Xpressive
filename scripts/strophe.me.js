@@ -54,8 +54,8 @@ Me.prototype.statusToString = function() {
 				xa: "Extended Away",
 				dnd: "Do not disturb",
 				disconnected: "Not connected",
-				autherr: "Authorization failed",
-				connerr: "Connection failed",
+				authfail: "Authorization failed",
+				connfail: "Connection failed",
 				authenticating : "Authenticating..."
 			};
 	return statusObj[this.status] || "...processing";		
