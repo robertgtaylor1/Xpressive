@@ -1,5 +1,4 @@
-﻿
-body {
+﻿body {
 	font-family: Helvetica;
 	font-size: 13px;
 }
@@ -244,9 +243,31 @@ textarea.disabled {
 	padding: 0;
 }
 
+#chat-area .ui-tabs-nav li {
+	margin-top: 0.6em;
+	font-size: 80%;
+}
+
+#chat-area .ui-tabs-nav li.ui-tabs-selected {
+	margin-top: 0em;
+	font-size: 100%;
+}
+
+#chat-area .ui-tabs-nav {
+	background: transparent;
+	border-width: 0px;
+	-webkit-border-radius: 0px;
+	   -moz-border-radius: 0px;
+	        border-radius: 0px;
+}
+#chat-area .ui-tabs-panel {
+	margin: 0em 0.2em 0.2em 0.2em;
+}
+
 #chat-area {
 	font-size: 13px;	
 	width: 70%;
+	padding: 0px;
 }
 
 #chat-area,

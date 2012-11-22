@@ -233,6 +233,7 @@ Room.prototype = {
 		this.connection.send(leaveIq);
 		this.getInfo();
 		this.chatSession = null;
+		this.occupants = {};
 	},
 
 	sendMessage : function(messageText) {
@@ -246,11 +247,21 @@ Room.prototype = {
 		this.connection.send(message);
 	},
 
-	incomingMucMessage : function(stanza) {
+	incomingMucMessage : function(message) {
 		Strophe.info("got message for room: " + this.roomJid);
+		var messageTime;
+		
+		delay = $(message).find('delay');
+		if (delay.length === 0){
+			delay = $(message).find('x');
+		}
+		if (delay.length !== 0){
+			var stamp = delay.attr('stamp');
+			messageTime = new Date(stamp);
+		}
 
-		this.messages.push(stanza);
-
+		this.messages.push(new Message(message, messageTime));
+		return messageTime;
 	},
 
 	requiresPassword : function() {
@@ -561,10 +572,16 @@ Servers.prototype = {
 	
 	updatePresence : function(pres) {
 		var jid = $(pres).attr('from');
+		var presType = $(pres).attr('type');
+
 		var room = this.getRoom(jid);
 		var occupant;
 		if (room) {
-			occupant = room.updateOccupant(pres);
+			if (presType === "unavailable") {
+				room.removeOccupant(jid);				
+			} else {
+				occupant = room.updateOccupant(pres);
+			}
 		}
 		return occupant;
 	}
@@ -640,32 +657,98 @@ Strophe.addConnectionPlugin('muc',(function() {
 	handlePresence = function(stanza) {
 		var nickname;
 		var presence = $(stanza);
-		var presType = presence.attr('type');
+		var presType = presence.attr('type');		
 		var from = presence.attr('from');
 		var room = _servers.getRoom(from);
 		var occupant;
-		if (room && room.isConfigured) {
-			Strophe.info("[MUC] Presence received for: " + from);
-	
-			occupant = _servers.updatePresence(presence);
-			nickname = Strophe.getResourceFromJid(from);
-			if (nickname === room.myNickname) {
-				// this is me
-				if (presType === 'unavaliable') {
-					// I have left the room
+		
+		if (presType === "error") {
+			var error = presence.find('error');
+			if (error.length > 0) {
+				var errorType = error.attr('type');
+				var errorCode = error.next().prop("tagName");
+				
+				Strophe.error("MUC presence error: type=" + errorType + ", code=" + errorCode);
+				
+				switch (errorType){
+					case "auth":
+						switch (errorCode) {
+							case "forbidden":
+								// banned/outcast
+								break;
+							case "not-authorized":
+								// password not supplied or incorrect
+								break;
+							case "registration-required":
+								// members only
+								break;
+							default:
+								break;
+						}
+						break;
+					case "cancel":
+						switch (errorCode) {
+							case "conflict":
+								// nickname clash
+								break;
+							case "not-allowed":
+								// can't create room
+								break;
+							case "item-not-found":
+								// room doesn't exist or is locked 
+								break;
+							default:
+								break;
+						}
+						break;
+					case "wait":
+						switch (errorCode) {
+							case "service-unavailable":
+								// user limit reached
+								break;
+							default:
+								break;
+							}
+						break;
+					case "modify":
+						switch (errorCode) {
+							case "jid-malformed":
+								// Nickname missing
+								break;
+							default:
+								break;
+							}
+						break;
+					default:
+						break;
 				}
-			} else {
-				if (presType === 'unavaliable') {
-					// Someone has left the room
-				} else {
-					// Someone has joined the room or changed status
-				}				
 			}
-			$(document).trigger("update_room_occupants", occupant);
 		} else {
-			Strophe.info("[MUC] Presence for new room: " + from);
-			// request room config
-			_requestRoomForm(from);
+			if (room && room.isConfigured) {
+				Strophe.info("[MUC] Presence received for: " + from);
+		
+				nickname = Strophe.getResourceFromJid(from);
+				if (nickname === room.myNickname) {
+					// this is me
+					if (presType === 'unavailable') {
+						// I have left the room					
+						$(document).trigger("I_have_left_room", room);
+						return true;
+					}
+				}			
+				occupant = _servers.updatePresence(presence);
+				
+				if (presType === 'unavailable') {
+					// Someone has left the room
+					$(document).trigger("someone_has_left_room", from);
+					return true;
+				}
+				$(document).trigger("update_room_occupants", occupant);
+			} else {
+				Strophe.info("[MUC] Presence for new room: " + from);
+				// request room config
+				_requestRoomForm(from);
+			}
 		}
 		return true;
 	};	

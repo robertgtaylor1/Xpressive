@@ -1,3 +1,9 @@
+function Message(message, timestamp)
+{
+	this.message = message;
+	this.timestamp = timestamp || new Date();
+}
+
 function ChatSession(to, name, resource, conn, message) {
 	this.adHoc = false;
 	this.connection = conn;
@@ -10,7 +16,7 @@ function ChatSession(to, name, resource, conn, message) {
 	this.isGroupChat = false;
 	this.messages = [];
 	if (message) {
-		this.messages.push(message);
+		this.messages.push(new Message(message));
 	};
 }
 
@@ -24,18 +30,20 @@ ChatSession.prototype = {
 		return fullMessage;		
 	},
 
-	sendMessage : function(message) {
+	sendMessage : function(message, timestamp) {
 
 		var fullMessage = this.chatstates().addActive(message).tree();
 
 		this.connection.send(fullMessage);
 		this.connection.flush();
-
+		if (this.isGroupChat === false) {
+			this.messages.push(new Message(message, timestamp));
+		}
 		return fullMessage;
 	},
 
-	recvMessage : function(message) {
-		this.messages.push(message);
+	recvMessage : function(message, timestamp) {
+		this.messages.push(new Message(message, timestamp));
 		return message;
 	},
 
@@ -144,11 +152,13 @@ Strophe.addConnectionPlugin('chat', (function() {
 		chatSession = _chatSessions[jid] || null;
 		if (chatSession) {
 			Strophe.info("New chat message sent to: " + jid);
-
-			message = chatSession.sendMessage(message);
+			
+			var msgTimestamp = new Date();
+			message = chatSession.sendMessage(message, msgTimestamp);
 			if (chatSession.isGroupChat === false) {
 				$(document).trigger('new_chat_message', {
 					'message' : message,
+					'timestamp' : msgTimestamp,
 					'fromMe' : true
 				});
 			}
@@ -164,12 +174,14 @@ Strophe.addConnectionPlugin('chat', (function() {
 		var contact;
 		var contactName;
 		var room;
+		var messageTime;
 
 		if (type === "groupchat") {
 			room = _muc.getRoom(from);
 			if (room == null) {
 				return true;
 			}
+			messageTime = room.incomingMucMessage(message);
 		} else {
 			if (chatSession) {
 				// incomming message from existing session
@@ -202,11 +214,13 @@ Strophe.addConnectionPlugin('chat', (function() {
 		$(document).trigger('new_chat_message', {
 			'message' : msg,
 			'fromMe' : false,
+			'timestamp' : messageTime,
 			'type' : type
 		});
 		return true;
 	};
 
+	// called when user click the tab close icon
 	var endSession = function(jid) {
 		var session = _chatSessions[jid];
 		session.endChat();

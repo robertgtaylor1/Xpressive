@@ -144,8 +144,10 @@
 
 		Xpressive.insert_room(room_id, $(room_html));
 	},
+
+
 	
-	do_update_room_occupants : function(occupant) {
+	do_update_room_occupant : function(occupant) {
 		var fullJid = occupant.fullJid;
 		var roomJid = Strophe.getBareJidFromJid(fullJid);
 		var roomOccupants_id = Xpressive.jid_to_id(roomJid) + "-occupants";
@@ -155,23 +157,39 @@
 		Strophe.debug("Update occupants: " + occupant.toString());
 		var liElem = $("li#" + elem_id);
 		if (liElem && liElem.length > 0) {
-			$("li#" + elem_id).replaceWith(occupant_html);
+			liElem.replaceWith(occupant_html);
 		} else {
 			roomOccupantsList.append($(occupant_html));
 		}
 	},
 
+	do_remove_room_occupant : function(fullJid) {
+		var roomJid = Strophe.getBareJidFromJid(fullJid);
+		var roomOccupants_id = Xpressive.jid_to_id(roomJid) + "-occupants";
+		var elem_id = Xpressive.occupantJid_to_id(fullJid);
+		var roomOccupantsList = $('ul#' + roomOccupants_id);
+		Strophe.debug("Remove occupant: " + fullJid);
+		var liElem = $("li#" + elem_id);
+		if (liElem && liElem.length > 0) {
+			liElem.remove();
+		}				
+	},
+
+	do_clear_room_occupants : function(room) {
+		var roomOccupants_id = Xpressive.jid_to_id(room.roomJid) + "-occupants";
+		var roomOccupantsList = $('ul#' + roomOccupants_id);
+		roomOccupantsList.empty();				
+	},
+	
 	_getOccupantHtml : function(occupant) {
-		var elem_id = Xpressive.occupantJid_to_id(occupant.fullJid);
+		var fullJid = occupant.fullJid;
+		var elem_id = Xpressive.occupantJid_to_id(fullJid);
 		var status_html = "";
-		var status;
+		var status = occupant.getStatus();
 		if (occupant.thisIsMe) {
 			status_html = " *me*"
-		} else { 
-			status = occupant.getStatus();
-			if (status.length > 0) {
-				status_html = " [" + status + "]";
-			}		
+		} else if (status.length > 0) {
+			status_html = " [" + status + "]";	
 		}
 		return "<li id='" + elem_id + "'>" + occupant.nickname() + status_html + "</li>";
 	},
@@ -316,13 +334,13 @@
 		this.on_start_chat(Strophe.getBareJidFromJid(jid), name, true);
 	},
 
-	on_message : function(message, fromMe) {
+	on_message : function(message, fromMe, messageTime) {
 		var jid, full_jid, jid_id, chatTab, name, resource, composing, body, span, messageSender; 
 		var	groupChat = false;
-		var messageTime = new Date();
 		var delay;
 		var messageText;
-
+		var timestamp = messageTime || new Date();
+		
 		if (fromMe) {
 			messageSender = Xpressive.connection.me.jid;
 			jid = Strophe.getBareJidFromJid($(message).attr('to'));
@@ -353,15 +371,16 @@
 				name = $(chatTab).data('name');
 			}
 		}
+		/*
 		delay = $(message).find('delay');
 		if (delay.length === 0){
 			delay = $(message).find('x');
 		}
 		if (delay.length !== 0){
 			var stamp = delay.attr('stamp');
-			messageTime = new Date(stamp);
+			timestamp = new Date(stamp);
 		}
-
+		*/
 		topic = $(message).find('subject');
 		if (topic.length > 0){
 			topic = topic.text();
@@ -425,7 +444,7 @@
 						appendUl = false;
 					}
 				}
-				var timeString = Xpressive._formatDate(messageTime, "{FullYear}-{Month:2}-{Date:2} {Hours:2}:{Minutes:2}");
+				var timeString = Xpressive._formatDate(timestamp, "{FullYear}-{Month:2}-{Date:2} {Hours:2}:{Minutes:2}");
 				if (appendUl) {
 					$(chatTab + ' .chat-messages').append("<ul class='chat-message" + ( fromMe ? " me'" : "'" ) + ">" + 
 					                                    	"<span class='chat-message-group'><span class='chat-name'>" + name + "</span>:&nbsp;<span class='chat-time'>" + timeString + 
@@ -1666,7 +1685,8 @@ $(document).bind('join_room', function(ev, room) {
 $(document).bind('new_chat_message', function(ev, data) {
 	var message = data.message;
 	var fromMe = data.fromMe;
-	Xpressive.on_message(message, fromMe);
+	var timestamp = data.timestamp;
+	Xpressive.on_message(message, fromMe, timestamp);
 });
 
 $(document).bind('remove_contact', function(ev, contact) {
@@ -1721,11 +1741,19 @@ $(document).bind('confirm_action', function(ev, data) {
 });
 
 $(document).bind('update_room_occupants', function(ev, occupant) {
-	Xpressive.do_update_room_occupants(occupant);
+	Xpressive.do_update_room_occupant(occupant);
 });
 
 $(document).bind('set_focus_on_tab', function(ev, jid) {
 	var jid_id = Xpressive.jid_to_id(jid);
 	// find the tab and 'click' it
 	$('#chat-area li a[href="#chat-' + jid_id + '"]').trigger('click');
+});
+
+$(document).bind('I_have_left_room', function(ev, room) {
+	Xpressive.do_clear_room_occupants(room);
+});
+
+$(document).bind('someone_has_left_room', function(ev, jid) {
+	Xpressive.do_remove_room_occupant(jid);
 });
