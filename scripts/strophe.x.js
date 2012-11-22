@@ -506,8 +506,20 @@ Field = (function() {
           el.text(txt);
         }
         break;
-      case 'text-single':
       case 'boolean':
+        el = $("<select>");
+        el.attr('boolean', 'boolean');
+        o1 = ($("<option class='Field-option'>")).attr('value', "1").text("Yes");
+        o2 = ($("<option class='Field-option'>")).attr('value', "0").text("No");
+		if (this.values[0] && (this.values[0] === "1" || this.values[0] === "true")) {
+	        o1.attr('selected', 'selected');
+        } else {
+        	o2.attr('selected', 'selected');
+        }
+        o1.appendTo(el);
+        o2.appendTo(el);
+        break;      
+      case 'text-single':
       case 'text-private':
       case 'hidden':
       case 'fixed':
@@ -592,7 +604,9 @@ Field = (function() {
         type = "text-multi";
         break;
       case "select":
-        if (el.attr("multiple") === "multiple") {
+      	if (el.attr("boolean")) {
+      		type = "boolean";
+      	} else if (el.attr("multiple") === "multiple") {
           type = "list-multi";
         } else {
           type = "list-single";
@@ -600,9 +614,9 @@ Field = (function() {
         break;
       case "input":
         switch (el.attr("type")) {
-          case "checkbox":
-            type = "boolean";
-            break;
+          //case "checkbox":
+          //  type = "boolean";
+          //  break;
           case "email":
             type = "jid-single";
             break;

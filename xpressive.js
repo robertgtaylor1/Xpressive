@@ -616,6 +616,10 @@
 	}
 };
 
+/**
+ * TODO: document.ready function
+ */
+
 $(document).ready(function() {
 	var listShowing = "Contacts";
 
@@ -1484,6 +1488,9 @@ $(document).ready(function() {
 			function() {
 				$(this).width(newW - 80);		
 		});
+		
+		$('#muc-area ul.room-details').height(newH - 84 - 60);
+		$('#roster-area ul.contact-details').height(newH - 84 - 60);
 	};
 
 	$('.ui-resizable').resize(doResize);	
@@ -1539,6 +1546,10 @@ $(document).ready(function() {
 		Xpressive.getSettings();
 	}	
 });
+
+/**
+ *  TODO: document event bindings
+ */
 
 $(document).bind('connect', function(ev, data) {
 
