@@ -113,6 +113,7 @@ function Room(jid, name, conn) {
 	this.presenceResponse = {};
 	this.form = {};
 	this.isConfigured = true;
+	this.chatSession = null;
 	Strophe.info("new room created: " + this.roomJid);
 }
 
@@ -192,11 +193,18 @@ Room.prototype = {
 		return val;
 	},
 	
+	// This function is used after a room is created as you are
+	// automatically added to the room by the serever and don't
+	// have to send another presence stanza.
 	rejoin : function() {
-		this.connection.chat.joinRoomChat(this.roomJid);		
+		this.chatSession = this.connection.chat.joinRoomChat(this.roomJid);		
 	},
 
 	join : function(nickname, password) {
+		if (this.chatSession) {
+			$(document).trigger('set_focus_on_tab', this.roomJid);
+			return;
+		}
 		Strophe.info("Room: join room: " + this.roomJid);
 		
 		this.myNickname = nickname;
@@ -212,18 +220,19 @@ Room.prototype = {
 		presence.up().cnode(elem);
 		
 		this.connection.send(presence.tree());		
-		this.connection.chat.joinRoomChat(this.roomJid);
+		this.chatSession = this.connection.chat.joinRoomChat(this.roomJid);
 		this.getInfo();
 	},
 
+	// called by Session.endChat
 	leave : function() {
 		Strophe.info("leave room: " + this.roomJid);
-		
 		var leaveIq = $pres({
 			to : this.roomJid + "/" + this.myNickname,
 			type : 'unavailable'});
 		this.connection.send(leaveIq);
 		this.getInfo();
+		this.chatSession = null;
 	},
 
 	sendMessage : function(messageText) {

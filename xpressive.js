@@ -628,6 +628,8 @@ $(document).ready(function() {
 		//'event' : 'mouseover',
 		'closableClick' : function(ev, data) {
 			if (data.panel.id === "console") {
+				// clear it
+				$('#console .log-messages').empty();
 				return false;
 			}
 			// leave chat
@@ -1227,9 +1229,13 @@ $(document).ready(function() {
 		ev.stopPropagation();		
 		var $li = $(this).parents('li');
 		var jid = $li.find(".room-jid").text();
-		var name = Xpressive.connection.muc.getRoom(jid).roomName;
-		var secure = Xpressive.connection.muc.isRoomSecure(jid);		
-		var title = "Join: " + name;
+		var room = Xpressive.connection.muc.getRoom(jid);
+		if (room.chatSession) {
+			room.join();
+			return;
+		}
+		var secure = room.requiresPassword();		
+		var title = "Join: " + room.roomName;
 
 		$('#joinRoom_dialog').dialog({ 'title' : title, 
 										'secure' : secure, 
@@ -1705,4 +1711,10 @@ $(document).bind('confirm_action', function(ev, data) {
 
 $(document).bind('update_room_occupants', function(ev, occupant) {
 	Xpressive.do_update_room_occupants(occupant);
+});
+
+$(document).bind('set_focus_on_tab', function(ev, jid) {
+	var jid_id = Xpressive.jid_to_id(jid);
+	// find the tab and 'click' it
+	$('#chat-area li a[href="#chat-' + jid_id + '"]').trigger('click');
 });

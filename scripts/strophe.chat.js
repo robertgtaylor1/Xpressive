@@ -39,6 +39,7 @@ ChatSession.prototype = {
 		return message;
 	},
 
+	// called by endSession
 	endChat : function() {
 		if (this.isGroupChat){
 			this.connection.muc.leave(this.to);
@@ -102,7 +103,7 @@ Strophe.addConnectionPlugin('chat', (function() {
 		_chatSessions[room.roomJid] = chatSession;
 		$(document).trigger('start_chatting', chatSession);
 
-		return true;
+		return chatSession;
 	};
 
 	var sendNewTopic = function(jid, topic) {
