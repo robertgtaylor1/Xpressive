@@ -6,6 +6,8 @@
 	settings : undefined,	
 
 	jid_to_id : function(jid) {
+		if (!jid)
+			return "";
 		return Strophe.getBareJidFromJid(jid).replace("@", "-").replace(/\./g, '-');
 	},
 
@@ -98,7 +100,7 @@
 	},
 
 	do_room_changed: function(room){
-		var room_id = Xpressive.jid_to_id(room.roomJid);
+		var room_id = Xpressive.jid_to_id(room.jid);
 		var numberOfOccupants = room.numberOfOccupants();
 		var room_html = "<li id='" + room_id + "'>" + 
 							"<div class='room-entry'>" + 
@@ -127,7 +129,7 @@
 
 		room_html += "</div>";
 		//room_html += "<div class='room-description'>" + room.description();
-		room_html += "<div class='room-jid'>" + room.roomJid + "</div>" +
+		room_html += "<div class='room-jid'>" + room.jid + "</div>" +
 								"<div><ul id='" + room_id + "-occupants' class='occupants-list";
 		if (numberOfOccupants === "0") {
 			room_html += " hidden";
@@ -144,8 +146,6 @@
 
 		Xpressive.insert_room(room_id, $(room_html));
 	},
-
-
 	
 	do_update_room_occupant : function(occupant) {
 		var fullJid = occupant.fullJid;
@@ -176,7 +176,7 @@
 	},
 
 	do_clear_room_occupants : function(room) {
-		var roomOccupants_id = Xpressive.jid_to_id(room.roomJid) + "-occupants";
+		var roomOccupants_id = Xpressive.jid_to_id(room.jid) + "-occupants";
 		var roomOccupantsList = $('ul#' + roomOccupants_id);
 		roomOccupantsList.empty();				
 	},
@@ -293,6 +293,28 @@
 
 		return true;
 	},
+	
+	do_log_chat_event : function(ev, data) {
+		
+		var jid = data.jid;
+		var msg;
+		
+		switch (ev) {
+			case "join":
+				msg = data.name + " has joined.";
+				break;
+			case "leave":
+				msg = data.name + " has left.";
+				break;
+			case "subject":
+				msg = data.name + " has changed the topic to '" + data.topic + "'";
+				break;
+			default:
+				msg = ev + " is unhandled.";
+				break;
+		}
+		Xpressive.on_chat_event(msg, jid, data.timestamp || new Date());		
+	},
 
 	on_start_chat : function(jid, name, groupChat) {
 
@@ -332,6 +354,12 @@
 
 	on_join_room : function(jid, name) {	
 		this.on_start_chat(Strophe.getBareJidFromJid(jid), name, true);
+	},
+
+	on_chat_event : function(message, jid, timestamp) {
+		jid_id = Xpressive.jid_to_id(jid);
+		chatTab = '#chat-' + jid_id;
+		Xpressive._add_message(chatTab, jid, message, "system", timestamp);
 	},
 
 	on_message : function(message, fromMe, messageTime) {
@@ -385,6 +413,10 @@
 		if (topic.length > 0){
 			topic = topic.text();
 			$(chatTab + ' .chat-topic').val(topic);
+			Xpressive.do_log_chat_event("subject", {
+				"jid" : full_jid,
+				"name" : name, 
+				"topic" : topic })
 		} else {
 
 			if ($(chatTab).length === 0) {
@@ -432,31 +464,34 @@
 			if (messageText) {
 				// remove notifications since user is now active
 				$(chatTab + ' .chat-event').remove();
-
-				// add the new message
-				var lastUl = $(chatTab + ' ul').last();
-				var appendUl = true;
-
-				if (lastUl.length > 0) {
-					var lastUserId = $(chatTab + ' ul').last().data('sender');
-					// if it's the same sender as the last message then don't repeat the name
-					if (lastUserId === messageSender) {
-						appendUl = false;
-					}
-				}
-				var timeString = Xpressive._formatDate(timestamp, "{FullYear}-{Month:2}-{Date:2} {Hours:2}:{Minutes:2}");
-				if (appendUl) {
-					$(chatTab + ' .chat-messages').append("<ul class='chat-message" + ( fromMe ? " me'" : "'" ) + ">" + 
-					                                    	"<span class='chat-message-group'><span class='chat-name'>" + name + "</span>:&nbsp;<span class='chat-time'>" + timeString + 
-					                                    	"</span></span><span class='chat-text'></span></ul>");					
-					lastUl = $(chatTab + ' ul').last().data('sender', messageSender);
-				}
-				$(chatTab + ' .chat-message:last .chat-text').append("<li>" + messageText + "<div class='chat-tooltip'>Message time : " + timeString + "</div></li>");
-
-				Xpressive._scroll_chat(jid_id);
+				Xpressive._add_message(chatTab, messageSender, messageText, fromMe ? "me" : name, timestamp);
 			}
 		}
 		return true;
+	},
+	
+	_add_message : function(chatTab, messageSender, messageText, name, timestamp) {
+		// add the new message
+		var lastUl = $(chatTab + ' ul').last();
+		var appendUl = true;
+
+		if (lastUl.length > 0) {
+			var lastUserId = $(chatTab + ' ul').last().data('sender');
+			// if it's the same sender as the last message then don't repeat the name
+			if (lastUserId === messageSender) {
+				appendUl = false;
+			}
+		}
+		var timeString = Xpressive._formatDate(timestamp, "{FullYear}-{Month:2}-{Date:2} {Hours:2}:{Minutes:2}");
+		if (appendUl) {
+			$(chatTab + ' .chat-messages').append("<ul class='chat-message" + ( name === "me" || name === "system" ? " " + name + "'" : "'" ) + ">" + 
+			                                    	"<span class='chat-message-group'><span class='chat-name'>" + name + "</span>:&nbsp;<span class='chat-time'>" + timeString + 
+			                                    	"</span></span><span class='chat-text'></span></ul>");					
+			lastUl = $(chatTab + ' ul').last().data('sender', messageSender);
+		}
+		$(chatTab + ' .chat-message:last .chat-text').append("<li>" + messageText + "<div class='chat-tooltip'>Message time : " + timeString + "</div></li>");
+
+		Xpressive._scroll_chat(jid_id);
 	},
 
 	_formatDate : function (d, // Date instance
@@ -1675,11 +1710,11 @@ $(document).bind('ask_subscription', function(ev, data) {
 });
 
 $(document).bind('start_chatting', function(ev, chatSession) {
-	Xpressive.on_start_chat(chatSession.to, chatSession.name, chatSession.isGroupChat);
+	Xpressive.on_start_chat(chatSession.chatWith.jid, chatSession.name, chatSession.isGroupChat);
 });
 
 $(document).bind('join_room', function(ev, room) {
-	Xpressive.on_join_room(room.roomJid, room.roomName);
+	Xpressive.on_join_room(room.jid, room.roomName);
 });
 
 $(document).bind('new_chat_message', function(ev, data) {
@@ -1720,7 +1755,7 @@ $(document).bind('save_settings', function(ev, newSettings) {
 });
 
 $(document).bind('roomname_changed', function(ev, room) {
-	Xpressive.updateRoomName(room.roomJid, room.roomName);
+	Xpressive.updateRoomName(room.jid, room.roomName);
 });
 
 $(document).bind('contactname_changed', function(ev, contact) {
@@ -1754,6 +1789,15 @@ $(document).bind('I_have_left_room', function(ev, room) {
 	Xpressive.do_clear_room_occupants(room);
 });
 
-$(document).bind('someone_has_left_room', function(ev, jid) {
-	Xpressive.do_remove_room_occupant(jid);
+$(document).bind('someone_has_left_room', function(ev, occupant) {
+	Xpressive.do_remove_room_occupant(occupant.fullJid);
+	Xpressive.do_log_chat_event("leave", {
+		jid : Strophe.getBareJidFromJid(occupant.fullJid), 
+		name : occupant.nickname()});
+});
+
+$(document).bind('someone_has_joined_room', function(ev, occupant) {
+	Xpressive.do_log_chat_event("join", {
+		jid : Strophe.getBareJidFromJid(occupant.fullJid), 
+		name : occupant.nickname()});
 });

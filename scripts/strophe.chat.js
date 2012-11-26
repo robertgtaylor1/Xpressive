@@ -4,13 +4,13 @@ function Message(message, timestamp)
 	this.timestamp = timestamp || new Date();
 }
 
-function ChatSession(to, name, resource, conn, message) {
+function ChatSession(chatWith, name, resource, conn, message) {
 	this.adHoc = false;
 	this.connection = conn;
 	this.chatstates = function () {
 		return this.connection.chatstates;
 	}
-	this.to = to;
+	this.chatWith = chatWith;
 	this.name = name;
 	this.resource = resource;
 	this.isGroupChat = false;
@@ -20,7 +20,7 @@ function ChatSession(to, name, resource, conn, message) {
 	};
 }
 
-ChatSession.prototype = {
+ChatSession.prototype = { 
 	sendTopic : function(message){
 		var fullMessage = message.tree();
 
@@ -50,9 +50,9 @@ ChatSession.prototype = {
 	// called by endSession
 	endChat : function() {
 		if (this.isGroupChat){
-			this.connection.muc.leave(this.to);
+			this.connection.muc.leave(this.chatWith.jid);
 		} else {			
-			this.chatstates().sendGone(this.to);
+			this.chatstates().sendGone(this.chatWith.jid);
 		}
 	}
 };
@@ -68,7 +68,7 @@ Strophe.addConnectionPlugin('chat', (function() {
 		_chatSessions = {};
 		_roster = {};
 		_muc = {};
-		_connection.addHandler(this.incomingMessage.bind(this), null, "message");
+		_connection.addHandler(this.incomingMessage.bind(this), null, "message"); //, null, null, null, { isDefault : true });
 	};
 
 	// called when connection status is changed
@@ -89,7 +89,7 @@ Strophe.addConnectionPlugin('chat', (function() {
 				resource = res;
 				break;
 			}
-			chatSession = new ChatSession(contact.jid, contact.name, resource, _connection);
+			chatSession = new ChatSession(contact, contact.name, resource, _connection);
 
 			//_connection.addHandler(incomingMessage.bind(chatSession), null, "message", null, bareJid, {
 			//	'matchBare' : true
@@ -102,13 +102,12 @@ Strophe.addConnectionPlugin('chat', (function() {
 		return chatSession;
 	};
 
-	var joinRoomChat = function(jid) {
-		var room = _muc.getRoom(jid);
-		var chatSession = new ChatSession(room.roomJid, room.roomName, null, _connection);
+	var joinRoomChat = function(room) {
+		var chatSession = new ChatSession(room, room.roomName, null, _connection);
 
 		chatSession.isGroupChat = true;
-		Strophe.info("Start room chat: " + room.roomJid);
-		_chatSessions[room.roomJid] = chatSession;
+		Strophe.info("Start room chat: " + room.jid);
+		_chatSessions[room.jid] = chatSession;
 		$(document).trigger('start_chatting', chatSession);
 
 		return chatSession;
@@ -177,7 +176,7 @@ Strophe.addConnectionPlugin('chat', (function() {
 		var messageTime;
 
 		if (type === "groupchat") {
-			room = _muc.getRoom(from);
+			room = chatSession.chatWith;
 			if (room == null) {
 				return true;
 			}
@@ -195,6 +194,8 @@ Strophe.addConnectionPlugin('chat', (function() {
 				if (room) {
 					contactName = Strophe.getResourceFromJid(from);
 					jid = from;
+					// create a contact but don't add to roster
+					contact = new Contact(null, jid);
 				} else {
 					jid = Strophe.getBareJidFromJid(from);
 					// Is this someone in my roster
@@ -202,10 +203,12 @@ Strophe.addConnectionPlugin('chat', (function() {
 					if (contact) {
 						contactName = contact.name;
 					} else {
+						// create a contact but don't add to roster
+						contact = new Contact(null, jid);
 						contactName = Strophe.getNodeFromJid(from)
 					}
 				}
-				chatSession = new ChatSession(jid, contactName, Strophe.getResourceFromJid(from), _connection, msg);
+				chatSession = new ChatSession(contact, contactName, Strophe.getResourceFromJid(from), _connection, msg);
 				_chatSessions[jid] = chatSession;
 
 				$(document).trigger('start_chatting', chatSession);

@@ -2838,7 +2838,7 @@ Strophe.Connection.prototype = {
         // send each incoming stanza through the handler chain
         var that = this;
         Strophe.forEachChild(elem, null, function (child) {
-            var i, newList;
+            var i, newList, defaultHandler = null, runDefault = true;
             // process handlers
             newList = that.handlers;
             that.handlers = [];
@@ -2847,10 +2847,13 @@ Strophe.Connection.prototype = {
                 // encapsulate 'handler.run' not to lose the whole handler list if
                 // one of the handlers throws an exception
                 try {
-                    if (hand.isMatch(child) &&
+                	if (hand.options.isDefault) {
+                		defaultHandler = hand;
+                	} else if (hand.isMatch(child) &&
                         (that.authenticated || !hand.user)) {
                         if (hand.run(child)) {
                             that.handlers.push(hand);
+                            runDefault = false;
                         }
                     } else {
                         that.handlers.push(hand);
@@ -2859,6 +2862,13 @@ Strophe.Connection.prototype = {
                     //if the handler throws an exception, we consider it as false
                 }
             }
+            try {
+	            if (runDefault && defaultHandler && (that.authenticated || !hand.user)) {
+	            	if (hand.run(child)) { 
+	            		that.handlers.push(hand);
+	            	}
+	            }
+            } catch (e) { }
         });
     },
 
