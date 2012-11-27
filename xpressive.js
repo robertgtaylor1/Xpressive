@@ -911,8 +911,8 @@ $(document).ready(function() {
 			$('#contact-groups, #group-label').removeClass('hidden');
 
 			if (_oper === "add") {
-				$('#contact-name').removeAttr('disabled');
-				$('#contact-groups').removeAttr('disabled');
+				$('#contact-jid').focus();
+				$('#contact-name', ''#contact-groups').removeAttr('disabled');
 				_buttons["Add"] = function() {
 					var jid = $('#contact-jid').val();
 					if (jid.length > 0) {
@@ -926,8 +926,11 @@ $(document).ready(function() {
 					};
 				}
 			} else if (_oper === "update") {
-				$('#contact-jid').attr('disabled', 'true');
-				$('#contact-name').val($(this).dialog('option', 'name')).focus();
+				$('#contact-jid').attr('disabled', 'true');				
+				$('#contact-groups').removeAttr('disabled');
+				$('#contact-name').val($(this).dialog('option', 'name'))
+									.removeAttr('disabled')
+									.focus();
 				var groups = $(this).dialog('option', 'groups');
 				$('#contact-groups').val((groups === "none" ? "" : groups));
 
@@ -940,7 +943,8 @@ $(document).ready(function() {
 				};				
 			} else if (_oper === "remove") {
 				$('#contact-jid').attr('disabled', 'true');
-				$('#contact-name').val($(this).dialog('option', 'name')).attr('disabled', 'true');
+				$('#contact-name').val($(this).dialog('option', 'name'))
+									.attr('disabled', 'true');
 				$('#contact-groups, #group-label').addClass('hidden');
 
 				_buttons["Remove"] = function() {

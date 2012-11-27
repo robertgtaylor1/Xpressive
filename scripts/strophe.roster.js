@@ -54,7 +54,7 @@ Contact.prototype = {
 				$(document).trigger('contactname_changed', this);
 			}
 		}
-		var _subscription = item.attr('subscripton');
+		var _subscription = item.attr('subscription');
 		if (_subscription !== undefined){
 		 	this.subscription = _subscription;
 		}
