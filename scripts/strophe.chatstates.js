@@ -37,15 +37,14 @@ Strophe.addConnectionPlugin('chatstates', {
 		if (paused.length > 0) {
 			$(document).trigger('paused.chatstates', jid);
 		}
+		
 		if (active.length > 0) {
-
 			$(document).trigger('active.chatstates', jid);
 		}
 
 		if (gone.length > 0) {
 			$(document).trigger('gone.chatstates', jid);
 		}
-
 		return true;
 	},
 

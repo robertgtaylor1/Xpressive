@@ -68,7 +68,7 @@ Strophe.addConnectionPlugin('chat', (function() {
 		_chatSessions = {};
 		_roster = {};
 		_muc = {};
-		_connection.addHandler(this.incomingMessage.bind(this), null, "message"); //, null, null, null, { isDefault : true });
+		_connection.addHandler(this.incomingMessage.bind(this), null, "message");
 	};
 
 	// called when connection status is changed
