@@ -472,7 +472,8 @@
 			Xpressive.do_log_chat_event("subject", {
 				"jid" : full_jid,
 				"name" : name, 
-				"topic" : topic })
+				"topic" : topic,
+				"timestamp" : messageTime })
 		} else {
 
 			if ($(chatTab).length === 0) {
