@@ -35,10 +35,10 @@
 		<script type="text/javascript" src='scripts/strophe.chat.js'></script>
 		<script type="text/javascript" src='scripts/strophe.x.js'></script>
 
-		<script type="text/javascript" src='xpressive.js'></script>
 		<script type="text/javascript" src='xpressive.dialogs.js'></script>
 		<script type="text/javascript" src='xpressive.events.js'></script>
 		<script type="text/javascript" src='xpressive.ui.events.js'></script>
+		<script type="text/javascript" src='xpressive.js'></script>
 	</head>
 	<body>
 		<div id="client" class='ui-widget-content'>
@@ -109,6 +109,31 @@
 			<label>Enter a nickname:</label>
 			<br/>
 			<input type='text' id='newroom-nickname'>
+		</div>
+
+		<!-- TODO: room send invite dialog-->
+		<div id='sendInvite_dialog' class='hidden'>
+			<label>Room:</label><span id='invite-roomName'></span>
+			<br/>
+			<label>Jid:</label>
+			<br/>
+			<input type='text' id='invite-jid'>
+			<br/>
+			<div class='password-req'>
+				<label>Password required, please enter it:</label>
+				<br/>
+				<input type='text' id='invite-password'>
+				<br/>
+			</div>
+			<label>Reason for invite (optional):</label>
+			<br/>
+			<input type='text' id='invite-reason'>
+		</div>
+
+		<!-- TODO: room invitation dialog-->
+		<div id='invitation_dialog' class='hidden'>
+			<span id='invitation-message'>Message goes here</span>
+			<br/>
 		</div>
 
 		<!-- TODO: settings dialog-->

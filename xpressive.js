@@ -1,7 +1,6 @@
 ﻿var Xpressive = {
 	connection : null,
 	start_time : null,
-	pending_subscriber : null,
 	Roster : function() { return Xpressive.connection.roster; },
 	Muc : function() { return Xpressive.connection.muc; },
 	Chat : function() { return Xpressive.connection.chat; },
@@ -75,7 +74,7 @@
 		$('#console .log-messages').append("<div><span class='log'>" + msg + "</span></div>");
 	},
 
-	getSettings : function() {
+	getSettings : function() {		
 		if (!Xpressive.settings)
 		{
 			Xpressive.settings = $.jStorage.get("Settings");
@@ -89,14 +88,21 @@
 	},
 
 	setSettings : function(newSettings) {
-		$.each(newSettings, function(key, value) {
+		if (!Xpressive.settings) {
+			Xpressive.settings = {};
+		}
+		$.each(newSettings, function(key, value) {			
 			Xpressive.settings[key] = value;
 		});
-		$.jStorage.set("Settings", Xpressive.settings);							
+		$.jStorage.set("Settings", Xpressive.settings);
 	},
 
 	getSetting : function(key) {
-		return Xpressive.getSettings()[key];
+		try {
+			return Xpressive.getSettings()[key];
+		} catch(ex) {
+			return null;
+		}
 	},
 
 	setSetting : function(key, value) {
@@ -372,6 +378,14 @@
 		Xpressive.on_chat_event(msg, jid, data.timestamp || new Date());		
 	},
 
+	do_send_invite : function(data) {
+		$('#sendInvite_dialog').dialog('option', 'room', data.room);		
+		$('#sendInvite_dialog').dialog('option', 'cancelHandler', null);		
+		$('#sendInvite_dialog').dialog('option', 'okHandler', data.okHandler);		
+		$('#sendInvite_dialog').dialog('open');				
+		
+	},
+	
 	on_start_chat : function(jid, name, groupChat) {
 
 		var jid_id = Xpressive.jid_to_id(jid);
@@ -592,7 +606,7 @@
 	insert_room : function(room_id, elem) {
 		var $room = $('#' + room_id);
 		if ($room.length === 0) {
-			$('#muc-area ul').append(elem);
+			$('#muc-area ul.room-details').append(elem);
 		} else {
 			$room.replaceWith(elem);
 		}
@@ -843,8 +857,6 @@ $(document).ready(function() {
 		Xpressive.log(level + ": " + message);
 	};
 
-	var settings = $.jStorage.get("Settings");
-	if (settings == null) {
-		Xpressive.getSettings();
-	}	
+	Xpressive.getSettings();
+	
 });

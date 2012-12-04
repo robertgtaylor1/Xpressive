@@ -96,8 +96,7 @@ Strophe.addConnectionPlugin('chat', (function() {
 			//});
 
 			Strophe.info("Start chat with: " + contact.name + "(" +contact.jid + ")");
-			_chatSessions[contact.jid] = chatSession;
-			$(document).trigger('start_chatting', chatSession);
+			_addChatSessionAndStartChatting(contact.jid, chatSession);
 		}
 		return chatSession;
 	};
@@ -107,10 +106,14 @@ Strophe.addConnectionPlugin('chat', (function() {
 
 		chatSession.isGroupChat = true;
 		Strophe.info("Start room chat: " + room.jid);
-		_chatSessions[room.jid] = chatSession;
-		$(document).trigger('start_chatting', chatSession);
+		_addChatSessionAndStartChatting(room.jid, chatSession);
 
 		return chatSession;
+	};
+	
+	var _addChatSessionAndStartChatting = function(jid, chatSession) {
+		_chatSessions[jid] = chatSession;
+		$(document).trigger('start_chatting', chatSession);		
 	};
 
 	var sendNewTopic = function(jid, topic) {
@@ -209,9 +212,7 @@ Strophe.addConnectionPlugin('chat', (function() {
 					}
 				}
 				chatSession = new ChatSession(contact, contactName, Strophe.getResourceFromJid(from), _connection, msg);
-				_chatSessions[jid] = chatSession;
-
-				$(document).trigger('start_chatting', chatSession);
+				_addChatSessionAndStartChatting(jid, chatSession);
 			}
 		}
 		$(document).trigger('new_chat_message', {

@@ -198,3 +198,7 @@ $(document).bind('someone_has_joined_room', function(ev, occupant) {
 		jid : Strophe.getBareJidFromJid(occupant.fullJid), 
 		name : occupant.nickname()});
 });
+
+$(document).bind('send_invitation'), function(ev, room) {
+	Xpressive.do_send_invite(room);
+}

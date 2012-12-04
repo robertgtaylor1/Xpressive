@@ -155,7 +155,7 @@ Contacts.prototype = {
 					// send a presence(type=subscribe)
 					this.conn.send($pres({
 						to : jid,
-						type: 'subscribe',
+						type: 'subscribe'
 					}).tree());
 				} else {
 					Strophe.info("rosterChange ignored");

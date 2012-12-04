@@ -109,7 +109,6 @@ function Room(jid, name, conn) {
 	this.roomInfoResponse = {};
 	this.occupants = {};
 	this.joined = false;
-	this.messages = [];
 	this.presenceResponse = {};
 	this.form = {};
 	this.isConfigured = true;
@@ -227,10 +226,10 @@ Room.prototype = {
 	// called by Session.endChat
 	leave : function() {
 		Strophe.info("leave room: " + this.jid);
-		var leaveIq = $pres({
+		var leavePres = $pres({
 			to : this.jid + "/" + this.myNickname,
 			type : 'unavailable'});
-		this.connection.send(leaveIq);
+		this.connection.send(leavePres);
 		this.getInfo();
 		this.chatSession = null;
 		this.occupants = {};
@@ -260,7 +259,7 @@ Room.prototype = {
 			messageTime = new Date(stamp);
 		}
 
-		this.messages.push(new Message(message, messageTime));
+		this.chatSession.recvMessage(message, messageTime);
 		return messageTime;
 	},
 
@@ -298,6 +297,10 @@ Room.prototype = {
 	},
 
 	iHaveVoice : function() {
+		return true;
+	},
+	
+	iCanInvite : function() {
 		return true;
 	},
 	
@@ -361,6 +364,34 @@ Room.prototype = {
 		Strophe.info("Room: update room occupant: " + occupantJid);
 		return this._addOccupant(occupantJid, pres);
 	},
+	
+	invite : function() {
+		$(document).trigger("send_invitation", { 
+				room : this, 
+				okHandler : this.sendInvite 
+			});
+	},
+	
+	sendInvite : function(data) {
+		var x = {
+			xmlns : "jabber:x:conference",
+			jid : data.jid
+		};
+		
+		if (data.reason) {
+			x.reason = data.reason;
+		}
+		
+		if (data.password) {
+			x.password = data.password;
+		}		
+		
+		var msg = $msg({
+			to : jid
+		}).c("x", x);
+		
+		this.connection.send(msg);
+	}
 };
 
 function Server(jid, conn) {
@@ -490,7 +521,7 @@ Server.prototype = {
 	_roomDestroyed : function(iq) {
 		var roomJid = $(iq).attr('from');
 		this.removeFromList(roomJid);
-	},	
+	}	
 };
 
 function Servers(connection) {
@@ -649,7 +680,6 @@ Strophe.addConnectionPlugin('muc',(function() {
 
 	leave = function(roomJid) {
 		var room = _servers.getRoom(roomJid);
-		//room.myNickname = null;
 		room.leave();
 	};
 
@@ -810,7 +840,7 @@ Strophe.addConnectionPlugin('muc',(function() {
 			});
 			
 		_connection.sendIQ(iqResponse.tree());
-		_servers.removeFromList(roomJid);
+		//_servers.removeFromList(roomJid);
 	};
 	
 	on_configure_room_result = function(iq) {
@@ -849,11 +879,12 @@ Strophe.addConnectionPlugin('muc',(function() {
 		var roomJid = roomName + "@" + myServer.serverJid;
 		var newRoom = new Room(roomJid, "[" + roomName + "]...not configured", _connection);
 		newRoom.isConfigured = false;
+		newRoom.myNickname = nickname;
 		myServer.rooms[roomJid] = newRoom;
 		
 		// request form
 		var request = $pres({
-				to : roomJid + "/" + nickname,
+				to : roomJid + "/" + nickname
 			}).c('x', {xmlns : Strophe.NS.MUC});
 		
 		_connection.send(request);

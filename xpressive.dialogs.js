@@ -38,7 +38,7 @@ $(document).ready(function() {
 		},
 		open : function() {
 			$(this).keypress(function(e) {
-				if (e.keyCode == $.ui.keyCode.ENTER) {
+				if (e.keyCode === $.ui.keyCode.ENTER) {
 					$(this).parent().find("button:eq(0)").trigger("click");
 				}
 			});
@@ -76,9 +76,9 @@ $(document).ready(function() {
 		},
 		open : function() {
 			$(this).keypress(function(e) {
-				if (e.keyCode == $.ui.keyCode.ENTER) {
+				if (e.keyCode === $.ui.keyCode.ENTER) {
 					$(this).parent().find("button:eq(1)").trigger("click");
-				} else if (e.keyCode == $.ui.keyCode.ESCAPE) {
+				} else if (e.keyCode === $.ui.keyCode.ESCAPE) {
 					$(this).parent().find("button:eq(0)").trigger("click");
 				}
 			});
@@ -113,7 +113,6 @@ $(document).ready(function() {
 					var reason = $('#destroyRoom-reason').val().trim();
 					var altJid = $('#destroyRoom-altJid').val().trim().toLowerCase();
 					var password = $('#destroyRoom-password').val().trim();
-					var reason = $('#destroyRoom-reason').val().trim();
 					okHandler(reason, altJid, password, $(this).dialog('option', 'userData'));	
 				}
 
@@ -122,9 +121,9 @@ $(document).ready(function() {
 		},
 		open : function() {
 			$(this).keypress(function(e) {
-				if (e.keyCode == $.ui.keyCode.ENTER) {
+				if (e.keyCode === $.ui.keyCode.ENTER) {
 					$(this).parent().find("button:eq(1)").trigger("click");
-				} else if (e.keyCode == $.ui.keyCode.ESCAPE) {
+				} else if (e.keyCode === $.ui.keyCode.ESCAPE) {
 					$(this).parent().find("button:eq(0)").trigger("click");
 				}
 			});
@@ -153,7 +152,7 @@ $(document).ready(function() {
 			var x = "input[value='" + $(this).dialog('option','currentStatus') + "']";
 			$(x, '#status_dialog').attr('checked', true); 
 			$(this).keypress(function(e) {
-				if (e.keyCode == $.ui.keyCode.ENTER) {
+				if (e.keyCode === $.ui.keyCode.ENTER) {
 					$(this).parent().find("button:eq(0)").trigger("click");
 				}
 			});		
@@ -190,7 +189,7 @@ $(document).ready(function() {
 		},
 		open : function() {
 			$(this).keypress(function(e) {
-				if (e.keyCode == $.ui.keyCode.ENTER) {
+				if (e.keyCode === $.ui.keyCode.ENTER) {
 					$(this).parent().find("button:eq(0)").trigger("click");
 				}
 			});
@@ -259,7 +258,7 @@ $(document).ready(function() {
 			$(this).dialog('option', 'buttons', _buttons);
 
 			$(this).keypress(function(e) {
-				if (e.keyCode == $.ui.keyCode.ENTER) {
+				if (e.keyCode === $.ui.keyCode.ENTER) {
 					$(this).parent().find("button:eq(0)").trigger("click");			
 				}
 			});
@@ -295,14 +294,43 @@ $(document).ready(function() {
 				}).tree());
 
 				$(this).dialog('close');
-			},
+			}
 		},
 		open : function() {
 			$("#approve-jid").text($(this).dialog('option', 'jid'));
 			$(this).keypress(function(e) {
-				if (e.keyCode == $.ui.keyCode.ENTER) {
+				if (e.keyCode === $.ui.keyCode.ENTER) {
 					$(this).parent().find("button:eq(0)").trigger("click");
-				} else if (e.keyCode == $.ui.keyCode.ESCAPE) {
+				} else if (e.keyCode === $.ui.keyCode.ESCAPE) {
+					$(this).parent().find("button:eq(1)").trigger("click");
+				}
+			});
+		}
+	});
+
+	$('#invitation_dialog').dialog({
+		autoOpen : false,
+		dragable : false,
+		resizable: false,
+		modal : true,
+		title : 'Invitation Request',
+		buttons : {
+			"Accept" : function() {
+				// join room
+				$(this).dialog('close');
+			},
+
+			"Ignore" : function() {
+				$(this).dialog('close');
+			}
+		},
+		open : function() {
+			var room = $(this).dialog('option', 'room');
+			$("#invite-name").text(room.name);
+			$(this).keypress(function(e) {
+				if (e.keyCode === $.ui.keyCode.ENTER) {
+					$(this).parent().find("button:eq(0)").trigger("click");
+				} else if (e.keyCode === $.ui.keyCode.ESCAPE) {
 					$(this).parent().find("button:eq(1)").trigger("click");
 				}
 			});
@@ -327,7 +355,7 @@ $(document).ready(function() {
 		},
 		open : function() {
 			$(this).keypress(function(e) {
-				if (e.keyCode == $.ui.keyCode.ENTER) {
+				if (e.keyCode === $.ui.keyCode.ENTER) {
 					$(this).parent().find("button:eq(0)").trigger("click");
 				}
 			});
@@ -359,9 +387,9 @@ $(document).ready(function() {
 		},
 		open : function() {
 			$(this).keypress(function(e) {
-				if (e.keyCode == $.ui.keyCode.ENTER) {
+				if (e.keyCode === $.ui.keyCode.ENTER) {
 					$(this).parent().find("button:eq(1)").trigger("click");
-				} else if (e.keyCode == $.ui.keyCode.ESCAPE) {
+				} else if (e.keyCode === $.ui.keyCode.ESCAPE) {
 					$(this).parent().find("button:eq(0)").trigger("click");
 				}
 			});
@@ -372,7 +400,7 @@ $(document).ready(function() {
 		},
 		close : function() {
 			//TODO do something
-		},
+		}
 	});
 
 	$('#roomDetails_dialog').dialog({
@@ -389,7 +417,7 @@ $(document).ready(function() {
 		},
 		open : function() {
 			$(this).keypress(function(e) {
-				if (e.keyCode == $.ui.keyCode.ENTER) {
+				if (e.keyCode === $.ui.keyCode.ENTER) {
 					$(this).parent().find("button:eq(0)").trigger("click");
 				}
 			});
@@ -404,7 +432,7 @@ $(document).ready(function() {
 		},
 		close : function() {
 			//TODO do something
-		},		
+		}		
 	});
 	
 	$('#roomDetails_dialog').bind('submit', function() {
@@ -432,7 +460,7 @@ $(document).ready(function() {
 		},
 		open : function() {
 			$(this).keypress(function(e) {
-				if (e.keyCode == $.ui.keyCode.ENTER) {
+				if (e.keyCode === $.ui.keyCode.ENTER) {
 					$(this).parent().find("button:eq(0)").trigger("click");
 				}
 			});
@@ -470,10 +498,51 @@ $(document).ready(function() {
 				$('#room-password-div').addClass('hidden')
 			}
 			$(this).keypress(function(e) {
-				if (e.keyCode == $.ui.keyCode.ENTER) {
+				if (e.keyCode === $.ui.keyCode.ENTER) {
 					$(this).parent().find("button:eq(0)").trigger("click");
 				}
 			});
 		}
 	});
+	
+	$('#sendInvite_dialog').dialog({
+		autoOpen : false,
+		dragable : false,
+		resizable: false,
+		modal : true,
+		title : 'Send Room Invite',
+		buttons : {
+			"Cancel" : function() {
+				var cancelHandler = $(this).dialog('option', 'cancelHandler');
+				if (cancelHandler){
+					cancelHandler($(this).dialog('option', 'userData'));	
+				}
+				
+				$(this).dialog('close');
+			},
+			"Send" : function() {
+				var okHandler = $(this).dialog('option', 'okHandler');
+				if (okHandler){
+					var reason = $('#invite-reason').val().trim();
+					var jid = $('#invite-jid').val().trim().toLowerCase();
+					var password = $('#invite-password').val().trim();
+					okHandler(reason, jid, password, $(this).dialog('option', 'userData'));	
+				}
+
+				$(this).dialog('close');
+			}
+		},
+		open : function() {
+			var room = $(this).dialog('option', 'room')
+			$(this).keypress(function(e) {
+				if (e.keyCode === $.ui.keyCode.ENTER) {
+					$(this).parent().find("button:eq(1)").trigger("click");
+				} else if (e.keyCode === $.ui.keyCode.ESCAPE) {
+					$(this).parent().find("button:eq(0)").trigger("click");
+				}
+			});
+			$('#invite-roomName').text(room.name);
+		}
+	});
+
 });

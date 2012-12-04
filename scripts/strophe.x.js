@@ -575,7 +575,7 @@ Field = (function() {
       required: xml.find("required").length === 1,
       values: (function() {
         var _i, _len, _ref, _results;
-        _ref = xml.find("value");
+        _ref = xml.find("field > value");
         _results = [];
         for (_i = 0, _len = _ref.length; _i < _len; _i++) {
           v = _ref[_i];
@@ -614,9 +614,6 @@ Field = (function() {
         break;
       case "input":
         switch (el.attr("type")) {
-          //case "checkbox":
-          //  type = "boolean";
-          //  break;
           case "email":
             type = "jid-single";
             break;
@@ -650,6 +647,7 @@ Field = (function() {
     switch (type) {
       case "list-multi":
       case "list-single":
+      case "boolean":  // NOTE: booleans are shown as a (single value list) <select> of Yes & No.
         f.values = (function() {
           var _i, _len, _ref, _results;
           _ref = html.find("option:selected");
@@ -678,9 +676,6 @@ Field = (function() {
           f.values = txt.split('\n');
         }
         break;
-      case 'boolean':
-		f.values = [ html.attr('checked') ? "1" : "0" ];
-		break;
       case 'text-single':
       case 'text-private':
       case 'hidden':
