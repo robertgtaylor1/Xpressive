@@ -409,11 +409,11 @@
 		if (!chatArea) {
 			$('#chat-area').tabs('add', chatTab, name);
 			if (groupChat){	
-				var hdrHtml = "<div><span id='topic-label'>Topic : <input type='text' class='chat-topic' /></span></div>" +				
-							  "<div><span id='affil-label'>Affiliation : </span><span id='affil-value'>" + 
+				var hdrHtml = "<div class='groupchat-header'><div><span id='topic-label'>Topic : <input type='text' class='chat-topic' /></span></div>" +				
+							  "<div><span id='affil-label'>Affiliation : </span><span id='affil-value' class='capitalize'>" + 
 							  			room.myAffiliation + "</span>" +
-							       "<span id='role-label'>  Role : </span><span id='role-value'>" + 
-							       		room.myRole + "</span></div>";
+							       "<span id='role-label'>  Role : </span><span id='role-value' class='capitalize'>" + 
+							       		room.myRole + "</span></div></div>";
 				$(chatTab).append(hdrHtml);
 			}
 			$(chatTab).append("<div class='chat-messages' ></div>" + "<input type='text' class='chat-input'/>");
@@ -804,7 +804,7 @@ $(document).ready(function() {
 		var newW = $('#chat-area').width();
 		$('.chat-input').each(
 			function() {
-				$(this).width(newW - 5);		
+				$(this).width(newW - 10);		
 		});
 		$('.chat-topic').each(
 			function() {
