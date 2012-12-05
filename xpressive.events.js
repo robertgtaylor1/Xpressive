@@ -111,7 +111,7 @@ $(document).bind('start_chatting', function(ev, chatSession) {
 });
 
 $(document).bind('join_room', function(ev, room) {
-	Xpressive.on_join_room(room.jid, room.roomName);
+	Xpressive.on_join_room(room.jid, room.roomName, room);
 });
 
 $(document).bind('new_chat_message', function(ev, data) {
@@ -197,6 +197,10 @@ $(document).bind('someone_has_joined_room', function(ev, occupant) {
 	Xpressive.do_log_chat_event("join", {
 		jid : Strophe.getBareJidFromJid(occupant.fullJid), 
 		name : occupant.nickname()});
+});
+
+$(document).bind('update_my_room_info', function(ev, info) {
+	Xpressive.updateRoomData(info.jid, info.affiliation, info.role);	
 });
 
 $(document).bind('send_invitation'), function(ev, room) {

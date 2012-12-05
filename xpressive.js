@@ -80,6 +80,7 @@
 			Xpressive.settings = $.jStorage.get("Settings");
 			if (!Xpressive.settings)
 			{
+				Xpressive.settings = {};
 				// popup settings dialog
 				$('#settings_dialog').dialog('open');
 			}		
@@ -386,7 +387,14 @@
 		
 	},
 	
-	on_start_chat : function(jid, name, groupChat) {
+	updateRoomData : function(jid, affiliation, role) {
+		var jid_id = Xpressive.jid_to_id(Strophe.getBareJidFromJid(jid));
+		var chatTab = '#chat-' + jid_id;
+		$('#chat-area ' + chatTab + ' #affil-value').text(affiliation);
+		$('#chat-area ' + chatTab + ' #role-value').text(role);		
+	},
+	
+	on_start_chat : function(jid, name, groupChat, room) {
 
 		var jid_id = Xpressive.jid_to_id(jid);
 		var chatTab = '#chat-' + jid_id;
@@ -400,8 +408,13 @@
 		var chatArea = $('#chat-area ' + chatTab)[0];
 		if (!chatArea) {
 			$('#chat-area').tabs('add', chatTab, name);
-			if (groupChat){
-				$(chatTab).append("<span id='topic-label'>Topic : <input type='text' class='chat-topic' /></span>");
+			if (groupChat){	
+				var hdrHtml = "<div><span id='topic-label'>Topic : <input type='text' class='chat-topic' /></span></div>" +				
+							  "<div><span id='affil-label'>Affiliation : </span><span id='affil-value'>" + 
+							  			room.myAffiliation + "</span>" +
+							       "<span id='role-label'>  Role : </span><span id='role-value'>" + 
+							       		room.myRole + "</span></div>";
+				$(chatTab).append(hdrHtml);
 			}
 			$(chatTab).append("<div class='chat-messages' ></div>" + "<input type='text' class='chat-input'/>");
 			$(chatTab).data('jid', jid);
@@ -422,8 +435,8 @@
 		$('#client').trigger('resize');
 	},
 
-	on_join_room : function(jid, name) {	
-		this.on_start_chat(Strophe.getBareJidFromJid(jid), name, true);
+	on_join_room : function(jid, name, room) {	
+		this.on_start_chat(Strophe.getBareJidFromJid(jid), name, true, room);
 	},
 
 	on_chat_event : function(message, jid, timestamp) {
@@ -780,7 +793,7 @@ $(document).ready(function() {
 		$('.chat-messages').each(
 			function() {
 				var groupChat = $(this).parent().data('groupChat');
-				$(this).height(newH - 84 - (groupChat === true ? 97 : 70));
+				$(this).height(newH - 84 - (groupChat === true ? 118 : 70));
 			}
 		);		
 		$('.log-messages').each(

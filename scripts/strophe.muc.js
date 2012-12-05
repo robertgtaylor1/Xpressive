@@ -82,6 +82,13 @@ Occupant.prototype = {
 		if (xElem && xElem.length > 0) {
 			this.thisIsMe = true;
 		}
+		if (this.thisIsMe) {
+			$(document).trigger("update_my_room_info", { 
+					"jid": this.fullJid, 
+					"affiliation": this.affiliation(),
+					"role":  this.role()}
+				);
+		}
 	},
 	
 	capabilitiesUpdate : function(caps) {
@@ -336,12 +343,12 @@ Room.prototype = {
 		if (!occupant) {
 			occupant = new Occupant(jid);			
 			this.occupants[occupant.nickname()] = occupant;
-			if (!occupant.thisIsMe) {
-				// fire joined room event
-				$(document).trigger("someone_has_joined_room", occupant);
-			}
 		}
 		occupant.presenceUpdate(pres);
+		if (!occupant.thisIsMe) {
+			// fire joined room event
+			$(document).trigger("someone_has_joined_room", occupant);
+		}
 		return occupant;
 	},
 	

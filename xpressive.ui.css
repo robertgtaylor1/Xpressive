@@ -283,6 +283,10 @@ textarea.disabled {
 	vertical-align: top;
 }
 
+#role-label,
+#affil-label {
+	margin-left: 10px;
+}
 /* THIS DON'T WORK!!
 .xmpp-refresh,
 .xmpp-protected,
