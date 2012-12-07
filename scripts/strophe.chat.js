@@ -172,55 +172,77 @@ Strophe.addConnectionPlugin('chat', (function() {
 		var from = msg.attr("from");
 		var jid = Strophe.getBareJidFromJid(from);
 		var chatSession = _chatSessions[jid] || null;
-		var type = msg.attr("type");
+		var type = msg.attr("type") || "normal";
 		var contact;
 		var contactName;
 		var room;
 		var messageTime;
-
-		if (type === "groupchat") {
-			room = chatSession.chatWith;
-			if (room == null) {
-				return true;
-			}
-			messageTime = room.incomingMucMessage(message);
+		
+		if (type === "normal") {
+			var invite = msg.find("invite");
+			if (invite.length > 0) {
+				// this is a room invite message
+				var roomJid = from;
+				var fromJid = invite.attr("from");
+				var password = msg.find("password");
+				room = _muc.getOrAddRoom(roomJid);
+				contact = _roster.findContact(Strophe.getBareJidFromJid(fromJid));
+									
+				room.inviteReceived(fromJid, 
+									(contact ? contact.name : Strophe.getNodeFromJid(fromJid)), 
+									invite.text(), 
+									(password.length > 0 ? password.text() : null));				
+			} 
+		} else if (type === "error") {
+			var error = msg.find("error");
+			var reason = error.children()[0].nodeName;			
+			// log and ignore
+			Strophe.warn("Message type=error recv'd: code=" + error.attr("code") + ", reason=" + reason );
 		} else {
-			if (chatSession) {
-				// incomming message from existing session
-				chatSession.recvMessage(msg);
-			} else {
-				// start new session with incomming message from contact
-				Strophe.info("Start chat requested by: " + Strophe.getBareJidFromJid(from));
-				// TODO Is this from a room
-				room = null;
-				//_connection.muc.isRoom(from);
-				if (room) {
-					contactName = Strophe.getResourceFromJid(from);
-					jid = from;
-					// create a contact but don't add to roster
-					contact = new Contact(null, jid);
+			if (type === "groupchat") {
+				room = chatSession.chatWith;
+				if (room == null) {
+					return true;
+				}
+				messageTime = room.incomingMucMessage(message);
+			} else if (type ==="chat") {
+				if (chatSession) {
+					// incomming message from existing session
+					chatSession.recvMessage(msg);
 				} else {
-					jid = Strophe.getBareJidFromJid(from);
-					// Is this someone in my roster
-					contact = _roster.findContact(jid);
-					if (contact) {
-						contactName = contact.name;
-					} else {
+					// start new session with incomming message from contact
+					Strophe.info("Start chat requested by: " + Strophe.getBareJidFromJid(from));
+					// TODO Is this from a room
+					room = null;
+					//_connection.muc.isRoom(from);
+					if (room) {
+						contactName = Strophe.getResourceFromJid(from);
+						jid = from;
 						// create a contact but don't add to roster
 						contact = new Contact(null, jid);
-						contactName = Strophe.getNodeFromJid(from)
+					} else {
+						jid = Strophe.getBareJidFromJid(from);
+						// Is this someone in my roster
+						contact = _roster.findContact(jid);
+						if (contact) {
+							contactName = contact.name;
+						} else {
+							// create a contact but don't add to roster
+							contact = new Contact(null, jid);
+							contactName = Strophe.getNodeFromJid(from)
+						}
 					}
+					chatSession = new ChatSession(contact, contactName, Strophe.getResourceFromJid(from), _connection, msg);
+					_addChatSessionAndStartChatting(jid, chatSession);
 				}
-				chatSession = new ChatSession(contact, contactName, Strophe.getResourceFromJid(from), _connection, msg);
-				_addChatSessionAndStartChatting(jid, chatSession);
 			}
+			$(document).trigger('new_chat_message', {
+				'message' : msg,
+				'fromMe' : false,
+				'timestamp' : messageTime,
+				'type' : type
+			});
 		}
-		$(document).trigger('new_chat_message', {
-			'message' : msg,
-			'fromMe' : false,
-			'timestamp' : messageTime,
-			'type' : type
-		});
 		return true;
 	};
 

@@ -203,6 +203,10 @@ $(document).bind('update_my_room_info', function(ev, info) {
 	Xpressive.updateRoomData(info.jid, info.affiliation, info.role);	
 });
 
-$(document).bind('send_invitation'), function(ev, room) {
-	Xpressive.do_send_invite(room);
-}
+$(document).bind('send_invitation', function(ev, data) {
+	Xpressive.do_send_invite(data);
+});
+
+$(document).bind('prompt_for_invite_response', function(ev, data) {
+	Xpressive.do_prompt_room_invite(data);
+});

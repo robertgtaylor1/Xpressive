@@ -168,6 +168,41 @@ $(document).ready(function() {
 		$('#contact_dialog').dialog('open');
 	});
 
+	$(document).on('click', '.xmpp-affil-actions', function(ev) {
+
+		ev.stopPropagation();
+		var $tab = $(this).parents('div.ui-tabs-panel');
+		var jid = $tab.data('jid');
+		var name = $tab.data('name');
+		var resource = $tab.data('resource');
+		
+		Xpressive.log("xmpp-affil-actions:" + jid + "/" + name + "/" + resource);		
+	});
+
+	$(document).on('click', '.xmpp-role-actions', function(ev) {
+
+		ev.stopPropagation();
+		var $tab = $(this).parents('div.ui-tabs-panel');
+		var jid = $tab.data('jid');
+		var name = $tab.data('name');
+		var resource = $tab.data('resource');
+
+		Xpressive.log("xmpp-role-actions:" + jid + "/" + name + "/" + resource);
+	});
+
+	$(document).on('click', '.xmpp-invite-actions', function(ev) {
+
+		ev.stopPropagation();
+		var $tab = $(this).parents('div.ui-tabs-panel');
+		var jid = $tab.data('jid');
+		var name = $tab.data('name');
+		var resource = $tab.data('resource');
+		var room = Xpressive.mucGetRoom(jid);
+		
+		Xpressive.log("xmpp-invite-actions:" + jid + "/" + name + "/" + resource);
+		room.invite();
+	});
+
 	$('#disconnect').click(function() {
 		Xpressive.sessionDisconnect();
 	});

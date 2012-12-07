@@ -107,7 +107,7 @@ Occupant.prototype = {
 };
 
 function Room(jid, name, conn) {
-	this.jid = jid;
+	this.jid = Strophe.getBareJidFromJid(jid);
 	this.myNickname = "";
 	this.myAffiliation = "none";
 	this.myRole = "none";
@@ -214,6 +214,9 @@ Room.prototype = {
 		Strophe.info("Room: join room: " + this.jid);
 		
 		this.myNickname = nickname;
+
+		$(document).trigger('join_room', this);
+		
 		var pw = (password ? password.trim() : "");
 		var presence = $pres({
 			to : this.jid + "/" + this.myNickname
@@ -223,8 +226,8 @@ Room.prototype = {
 		}
 		
 		var elem = this.connection.caps.createCapsNode().tree();
-		presence.up().cnode(elem);
-		
+		presence.up().cnode(elem);		
+
 		this.connection.send(presence.tree());		
 		this.chatSession = this.connection.chat.joinRoomChat(this);
 		this.getInfo();
@@ -270,6 +273,22 @@ Room.prototype = {
 		return messageTime;
 	},
 
+	inviteReceived: function(from, fromName, reason, password) {
+		Strophe.info("got invite for room: " + this.jid);
+		
+		$(document).trigger("prompt_for_invite_response", {
+			"fromJid" : from,
+			"fromName" : fromName,
+			"reason" : reason,
+			"password" : password,
+			"roomJid" : this.jid,
+			"roomName" : this.roomName,
+			"accept" : this.acceptInvite.bind(this),
+			"decline" : this.declineInvite.bind(this),
+			"ignore" : null
+		})		
+	},
+	
 	requiresPassword : function() {
 		var isSecure = true;
 		if (this.roomInfoResponse){
@@ -375,29 +394,46 @@ Room.prototype = {
 	invite : function() {
 		$(document).trigger("send_invitation", { 
 				room : this, 
-				okHandler : this.sendInvite 
+				okHandler : this.sendInvite.bind(this) 
 			});
 	},
 	
 	sendInvite : function(data) {
-		var x = {
-			xmlns : "jabber:x:conference",
-			jid : data.jid
-		};
+		var msg = $msg({
+			"to" : this.jid
+		}).c("x", {
+			"xmlns" : Strophe.NS.MUC_USER
+		}).c("invite", { 
+			"to" : data.jid});
 		
 		if (data.reason) {
-			x.reason = data.reason;
+			msg.c("reason").t(data.reason).up();
 		}
 		
 		if (data.password) {
-			x.password = data.password;
+			msg.up().c("password").t(data.password);
 		}		
 		
+		this.connection.send(msg.tree());
+	},
+	
+	acceptInvite : function(nickname, password) {
+		this.join(nickname, password);
+	},
+	
+	declineInvite : function(from, sender, reason) {
 		var msg = $msg({
-			to : jid
-		}).c("x", x);
+			"to" : from
+		}).c("x", {
+			"xmlns" : Strophe.NS.MUC_USER
+		}).c("decline", { 
+			"to" : sender});
+			
+		if (reason) {
+			msg.c("reason").t(reason);
+		}
 		
-		this.connection.send(msg);
+		this.connection.send(msg.tree());
 	}
 };
 
@@ -549,10 +585,14 @@ Servers.prototype = {
 		}
 	},
 
+	addServerAndGetInfo : function(jid) {
+		this.addServer(jid).getInfo();
+	},
+
 	addServer : function(jid) {
 		var serverJid = Strophe.getDomainFromJid(jid);
 		this.servers[serverJid] = new Server(serverJid, this.conn);
-		this.servers[serverJid].getInfo();
+		return this.servers[serverJid];
 	},
 
 	removeServer : function(jid) {
@@ -629,6 +669,22 @@ Servers.prototype = {
 			}
 		}
 		return occupant;
+	},
+	
+	getOrAddRoom : function(jid) {
+		var server;
+		var roomJid = Strophe.getBareJidFromJid(jid);
+		var room = this.getRoom(roomJid);
+		if (!room) {
+			server = this.getServer(roomJid);
+			if (!server) {
+				server = this._servers.addServer(roomJid);
+			}
+			room = new Room(roomJid, null, this.conn);
+			room.getInfo();
+			server.rooms[room.jid] = room;
+		}
+		return room;
 	}
 };
 
@@ -672,16 +728,12 @@ Strophe.addConnectionPlugin('muc',(function() {
 			}
 		});
 		if (mucJid) {
-			_servers.addServer(mucJid);
+			_servers.addServerAndGetInfo(mucJid);
 		}
 	};
 
 	join = function(roomJid, nickname, password) {
 		var room = _servers.getRoom(roomJid);
-		room.myNnickname = nickname;
-
-		$(document).trigger('join_room', room);
-
 		room.join(nickname, password);
 	};
 
@@ -877,6 +929,10 @@ Strophe.addConnectionPlugin('muc',(function() {
 		return false;
 	};
 	
+	getOrAddRoom = function(jid) {
+		return _servers.getOrAddRoom(jid);
+	};
+	
 	getRoom = function(jid) {
 		return _servers.getRoom(jid);
 	};
@@ -914,6 +970,7 @@ Strophe.addConnectionPlugin('muc',(function() {
 		isServer : isServer,
 		isRoomSecure : isRoomSecure, 
 	    getRoom : getRoom, 
+	    getOrAddRoom : getOrAddRoom,
 	    createRoom : createRoom,
 	    destroyRoom : destroyRoom,
 	    refreshInfo : refreshInfo,

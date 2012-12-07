@@ -383,8 +383,23 @@
 		$('#sendInvite_dialog').dialog('option', 'room', data.room);		
 		$('#sendInvite_dialog').dialog('option', 'cancelHandler', null);		
 		$('#sendInvite_dialog').dialog('option', 'okHandler', data.okHandler);		
-		$('#sendInvite_dialog').dialog('open');				
+		$('#sendInvite_dialog').dialog('open');						
+	},
+	
+	do_prompt_room_invite : function(data) {
+		$("#roomInvitation_dialog").dialog('option', 'roomJid', data.roomJid);
+		$("#roomInvitation_dialog").dialog('option', 'roomName', data.roomName);
 		
+		$("#roomInvitation_dialog").dialog('option', 'fromJid', data.fromJid);
+		$("#roomInvitation_dialog").dialog('option', 'fromName', data.fromName);
+
+		$("#roomInvitation_dialog").dialog('option', 'password', data.password);
+		$("#roomInvitation_dialog").dialog('option', 'reason', data.reason);
+		
+		$("#roomInvitation_dialog").dialog('option', 'accept', data.accept);
+		$("#roomInvitation_dialog").dialog('option', 'decline', data.decline);
+		$("#roomInvitation_dialog").dialog('option', 'ignore', data.ignore);
+		$("#roomInvitation_dialog").dialog('open');
 	},
 	
 	updateRoomData : function(jid, affiliation, role) {
@@ -392,6 +407,18 @@
 		var chatTab = '#chat-' + jid_id;
 		$('#chat-area ' + chatTab + ' #affil-value').text(affiliation);
 		$('#chat-area ' + chatTab + ' #role-value').text(role);		
+		if (affiliation === 'none') {
+			$('#chat-area ' + chatTab + ' #affil-img').addClass('hidden');
+		} else {		
+			$('#chat-area ' + chatTab + ' #affil-img').removeClass('hidden');
+			$('#chat-area ' + chatTab + ' #affil-tooltip').text(affiliation + " actions...");
+		}
+		if (role === 'none') {
+			$('#chat-area ' + chatTab + ' #role-img').addClass('hidden');
+		} else {		
+			$('#chat-area ' + chatTab + ' #role-img').removeClass('hidden');
+			$('#chat-area ' + chatTab + ' #role-tooltip').text(role + " actions...");
+		}		
 	},
 	
 	on_start_chat : function(jid, name, groupChat, room) {
@@ -409,11 +436,24 @@
 		if (!chatArea) {
 			$('#chat-area').tabs('add', chatTab, name);
 			if (groupChat){	
-				var hdrHtml = "<div class='groupchat-header'><div><span id='topic-label'>Topic : <input type='text' class='chat-topic' /></span></div>" +				
-							  "<div><span id='affil-label'>Affiliation : </span><span id='affil-value' class='capitalize'>" + 
-							  			room.myAffiliation + "</span>" +
-							       "<span id='role-label'>  Role : </span><span id='role-value' class='capitalize'>" + 
-							       		room.myRole + "</span></div></div>";
+				var hdrHtml = "<div class='groupchat-header'>" +
+									"<div><span id='topic-label'>Topic : <input type='text' class='chat-topic' /></span></div>" +				
+							  		"<div><span id='affil-label'>Affiliation : </span><span id='affil-value' class='capitalize'>" + 
+							  						room.myAffiliation + "</span>" +
+											"<span id='affil-img'>&nbsp;<img class='ui-icon ui-icon-play xmpp-affil-actions' " +
+													   "style='display:inline-block; vertical-align:bottom;'/>" +							  				
+												"<div id='affil-tooltip' class='tooltip capitalize'>Affiliation Actions.</div></span>" +							  				
+							       		 "<span id='role-label'>  Role : </span><span id='role-value' class='capitalize'>" + 
+							       					room.myRole + "</span>" +
+											"<span id='role-img'>&nbsp;<img class='ui-icon ui-icon-play xmpp-role-actions' " +
+													   "style='display:inline-block; vertical-align:bottom;'/>" +
+												"<div id='role-tooltip' class='tooltip capitalize'>Role Actions.</div></span>" +
+										 "<span id='invite-label'>Invite</span>" +
+											"<span id='invite-img'>&nbsp;<img class='ui-icon ui-icon-play xmpp-invite-actions' " +
+													   "style='display:inline-block; vertical-align:bottom;'/>" +							  				
+												"<div id='invite-tooltip' class='tooltip capitalize'>Invite someone to join.</div></span>" +
+							       	"</div>" +
+							  "</div>";
 				$(chatTab).append(hdrHtml);
 			}
 			$(chatTab).append("<div class='chat-messages' ></div>" + "<input type='text' class='chat-input'/>");
@@ -515,7 +555,7 @@
 			if (composing.length > 0) {
 				$(chatTab + ' .chat-messages').append("<div class='chat-event'>" + name + " is typing...</div>");
 
-				Xpressive._scroll_chat(jid_id);
+				Xpressive._scroll_chat(chatTab);
 			}
 			// TODO let's ignore HTML content for now
 			body = $(message).find("html > body");
@@ -575,7 +615,7 @@
 		}
 		$(chatTab + ' .chat-message:last .chat-text').append("<li>" + messageText + "<div class='chat-tooltip'>Message time : " + timeString + "</div></li>");
 
-		Xpressive._scroll_chat(jid_id);
+		Xpressive._scroll_chat(chatTab);
 	},
 
 	_formatDate : function (d, // Date instance
@@ -597,8 +637,8 @@
 	        })	
 	},
 
-	_scroll_chat : function(jid_id) {
-		var div = $('#chat-' + jid_id + ' .chat-messages').get(0);
+	_scroll_chat : function(chatTab) {
+		var div = $(chatTab + ' .chat-messages').get(0);
 		div.scrollTop = div.scrollHeight;
 	},
 

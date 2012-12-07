@@ -131,9 +131,23 @@
 		</div>
 
 		<!-- TODO: room invitation dialog-->
-		<div id='invitation_dialog' class='hidden'>
-			<span id='invitation-message'>Message goes here</span>
+		<div id='roomInvitation_dialog' class='hidden'>
+			<span id='roomInvite-fromName'></span> [<span id='roomInvite-fromJid'></span>]
 			<br/>
+			<span> has invited you to join room :</span>
+			<br/>
+			<span id='roomInvite-roomName'></span> [<span id='roomInvite-roomJid'></span>]
+			<br/><br/>
+			<span>Reason: </span><span id='roomInvite-message'>Message goes here</span>
+			<br/><br/>
+			<label for='roomInvite-nickname'>Enter your room nickname:</label>
+			<input type='text' id='roomInvite-nickname'>
+			<div id='room-password-div'>				
+				<span>A password has been provided.</span>
+			</div><br/>
+			<span>If you wish to decline this invitation</span>
+			<label for='roomInvite-decline'>you can enter a reason here:</label>
+			<input type='text' id='roomInvite-decline'>
 		</div>
 
 		<!-- TODO: settings dialog-->

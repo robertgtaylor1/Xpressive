@@ -505,6 +505,76 @@ $(document).ready(function() {
 		}
 	});
 	
+	$('#roomInvitation_dialog').dialog({
+		autoOpen : false,
+		draggable : false,
+		resizable : false,
+		modal : true,
+		title : 'Room Invitation',
+		buttons : {
+			"Ignore" : function() {
+				var ignoreHandler = $(this).dialog('option', 'ignore');
+				if (ignoreHandler){
+					ignoreHandler();	
+				}
+				$(this).dialog('close');				
+			},
+			"Decline" : function() {
+				var reason = $('#roomInvite-decline').val().trim();
+				var jid = $(this).dialog('option', 'jid');
+				if (reason.length ===0) {
+					reason = "None given.";	
+				}
+				var declineHandler = $(this).dialog('option', 'decline');
+				if (declineHandler){
+					declineHandler($(this).dialog('option', 'roomJid'), 
+									Strophe.getBareJidFromJid($(this).dialog('option', 'fromJid')), 
+									reason);	
+				}
+				$(this).dialog('close');				
+			},
+			"Accept" : function() {
+				var nick = $('#roomInvite-nickname').val().trim();
+				var password = $(this).dialog('option', 'password');
+				
+				var acceptHandler = $(this).dialog('option', 'accept');
+				if (acceptHandler){
+					acceptHandler(nick, password);	
+				}
+
+				$(this).dialog('close');
+			}
+		},
+		open : function() {
+			$('#roomInvite-nickname').val(Xpressive.meGetMyNickname());
+			var password = $(this).dialog('option', 'password');
+			if (password) {
+				$('#roomInvite-password-div').addClass('hidden')
+			} else {
+				$('#roomInvite-password-div').removeClass('hidden')
+			}
+			var roomName = $(this).dialog('option', 'roomName');
+			var roomJid = $(this).dialog('option', 'roomJid');
+			$('#roomInvite-roomName').text(roomName);
+		 	$('#roomInvite-roomJid').text(roomJid);
+			
+			var fromName = $(this).dialog('option', 'fromName');
+			var fromJid = Strophe.getBareJidFromJid($(this).dialog('option', 'fromJid'));
+			$('#roomInvite-fromName').text(fromName);
+			$('#roomInvite-fromJid').text(fromJid);
+			
+			$('#roomInvite-message').text($(this).dialog('option', 'reason'));
+			
+			$(this).keypress(function(e) {
+				if (e.keyCode === $.ui.keyCode.ENTER) {
+					$(this).parent().find("button:eq(2)").trigger("click");
+				} else if (e.keyCode === $.ui.keyCode.ESCAPE) {
+					$(this).parent().find("button:eq(0)").trigger("click");
+				}
+			});
+		}
+	});
+	
 	$('#sendInvite_dialog').dialog({
 		autoOpen : false,
 		dragable : false,
@@ -520,13 +590,18 @@ $(document).ready(function() {
 				
 				$(this).dialog('close');
 			},
-			"Send" : function() {
+			"Invite" : function() {
 				var okHandler = $(this).dialog('option', 'okHandler');
 				if (okHandler){
 					var reason = $('#invite-reason').val().trim();
 					var jid = $('#invite-jid').val().trim().toLowerCase();
 					var password = $('#invite-password').val().trim();
-					okHandler(reason, jid, password, $(this).dialog('option', 'userData'));	
+					okHandler({
+						"reason": reason,
+						"jid": jid,
+						"password": password, 
+						"userData": $(this).dialog('option', 'userData')
+					});	
 				}
 
 				$(this).dialog('close');
@@ -545,4 +620,51 @@ $(document).ready(function() {
 		}
 	});
 
+	$('#affilCommands_dialog').dialog({
+		autoOpen : false,
+		dragable : false,
+		resizable: false,
+		modal : true,
+		title : 'Room Commands',
+		buttons : {
+			"Cancel" : function() {
+			},
+			"Do" : function() {
+				
+			}
+		},
+		open : function() {
+			$(this).keypress(function(e) {
+				if (e.keyCode === $.ui.keyCode.ENTER) {
+					$(this).parent().find("button:eq(1)").trigger("click");
+				} else if (e.keyCode === $.ui.keyCode.ESCAPE) {
+					$(this).parent().find("button:eq(0)").trigger("click");
+				}
+			});
+		}
+	});
+
+	$('#roleCommands_dialog').dialog({
+		autoOpen : false,
+		dragable : false,
+		resizable: false,
+		modal : true,
+		title : 'Room Commands',
+		buttons : {
+			"Cancel" : function() {
+			},
+			"Do" : function() {
+				
+			}
+		},
+		open : function() {
+			$(this).keypress(function(e) {
+				if (e.keyCode === $.ui.keyCode.ENTER) {
+					$(this).parent().find("button:eq(1)").trigger("click");
+				} else if (e.keyCode === $.ui.keyCode.ESCAPE) {
+					$(this).parent().find("button:eq(0)").trigger("click");
+				}
+			});
+		}
+	});
 });

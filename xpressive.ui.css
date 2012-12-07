@@ -279,10 +279,16 @@ textarea.disabled {
 	vertical-align: top;
 }
 
+#invite-label,
 #role-label,
 #affil-label {
 	margin-left: 10px;
 }
+
+#roomInvitation_dialog {
+	width: 500px;
+}
+
 /* THIS DON'T WORK!!
 .xmpp-refresh,
 .xmpp-protected,
@@ -339,6 +345,10 @@ textarea.disabled {
 
 .hidden {
 	display: none;
+}
+
+.inline-block {
+	display: inline-block;
 }
 
 .vertical-divider {
