@@ -9,7 +9,7 @@ Copyright 2010, François de Metz <francois@2metz.fr>
  */
 Strophe.addConnectionPlugin('disco', (function () {
 	// public properties
-	var init, addIdentity, addFeature, removeFeature, items, addItem, info, getIdentity, hasIdentities;
+	var init, addIdentity, addFeature, removeFeature, addItem, getIdentity, hasIdentities;
 	// local callbacks
 	var _buildIQResult, _onDiscoInfo, _onDiscoItems;
 	// local properties
@@ -119,6 +119,7 @@ Strophe.addConnectionPlugin('disco', (function () {
 	 *   (String) jid
 	 *   (String) node
 	 */
+	/*
 	info = function(jid, node, success, error, timeout) {
 		var attrs = {
 			xmlns : Strophe.NS.DISCO_INFO
@@ -133,6 +134,7 @@ Strophe.addConnectionPlugin('disco', (function () {
 		}).c('query', attrs);
 		_connection.sendIQ(info, success, error, timeout);
 	};
+	*/
 	/** Function: items
 	 * Items query
 	 *
@@ -141,7 +143,8 @@ Strophe.addConnectionPlugin('disco', (function () {
 	 *   (String) jid
 	 *   (String) node
 	 */
-	items = function(jid, node, success, error, timeout) {
+	/*
+	 items = function(jid, node, success, error, timeout) {
 		var attrs = {
 			xmlns : Strophe.NS.DISCO_ITEMS
 		};
@@ -155,7 +158,7 @@ Strophe.addConnectionPlugin('disco', (function () {
 		}).c('query', attrs);
 		_connection.sendIQ(items, success, error, timeout);
 	};
-
+*/
 	hasIdentities = function(){
 		return (_identities.length === 0);
 	}
@@ -253,9 +256,9 @@ Strophe.addConnectionPlugin('disco', (function () {
 		addIdentity : addIdentity, 
 		addFeature : addFeature,
 		removeFeature : removeFeature,
-		items : items,
+		//items : items,
 		addItem : addItem,
-		info : info,
+		//info : info,
 		hasIdentities : hasIdentities,
 		getIdentity : getIdentity,
 		identities : _identities,

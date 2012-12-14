@@ -71,7 +71,12 @@
 	},
 
 	log : function(msg) {
-		$('#console .log-messages').append("<div><span class='log'>" + msg + "</span></div>");
+		if ($('#console .log-messages').length > 0) {
+			$('#console .log-messages').append("<div><span class='log'>" + msg + "</span></div>");
+		}
+		else {
+			console.log(msg);
+		}
 	},
 
 	getSettings : function() {		
@@ -696,14 +701,19 @@
 	show_traffic : function(body, type) {
 		if (body.childNodes.length > 0) {
 			var console = $('#console').get(0);
-			var at_bottom = console.scrollTop >= console.scrollHeight - console.clientHeight;
-
-			$.each(body.childNodes, function() {
-				$('#console .log-messages').append("<div><span class='" + type + "'>" + Xpressive.pretty_xml(this) + "</span></div>");
-			});
-
-			if (at_bottom) {
-				console.scrollTop = console.scrollHeight;
+			if (console) {
+				var at_bottom = console.scrollTop >= console.scrollHeight - console.clientHeight;
+	
+				$.each(body.childNodes, function(index, node) {
+					$('#console .log-messages').append("<div><span class='" + type + "'>" + Xpressive.pretty_xml(node) + "</span></div>");
+				});
+	
+				if (at_bottom) {
+					console.scrollTop = console.scrollHeight;
+				}
+			}
+			else {
+				console.log(Xpressive.pretty_xml(this));
 			}
 		}
 	},
@@ -747,18 +757,22 @@
 			result.push("<span class='xml_punc'>/&gt;</span></div>");
 		} else {
 			result.push("<span class='xml_punc'>&gt;</span></div>");
-
-			// children
-			$.each(xml.childNodes, function() {
-				if (this.nodeType === 1) {
-					result.push(Xpressive.pretty_xml(this, level + 1));
-				} else if (this.nodeType === 3) {
-					result.push("<div class='xml_text xml_level" + (level + 1) + "'><span>");
-					result.push(this.nodeValue);
-					result.push("</span></div>");
-				}
-			});
-
+			try {
+				// children
+				$.each(xml.childNodes, function(index, node) {
+					if (node.nodeType === 1) {
+						result.push(Xpressive.pretty_xml(node, level + 1));
+					} else if (node.nodeType === 3) {
+						result.push("<div class='xml_text xml_level" + (level + 1) + "'><span>");
+						result.push(node.nodeValue);
+						result.push("</span></div>");
+					}
+				});
+			}
+			catch (ex)
+			{
+				console.log(ex);
+			}
 			result.push("<div class='xml xml_level" + level + "'>");
 			result.push("<span class='xml_punc'>&lt;/</span>");
 			result.push("<span class='xml_tag'>");
