@@ -14,3 +14,7 @@ The client currently supports:
 	XEP-0045	muc (partial)
 	XEP-0004	xData Forms
 	XEP-0030	Service Discovery
+
+This project has now been replaced by Xpressive2 which is a reworking of this using Typescript.
+
+Details of Typescript can be found here http://http://www.typescriptlang.org/. It is a javascript pre-processor from Microsoft that helps when it comes to writing js code. It provides intellisense and allows you to add type annotations to var's, define classes (like you have in other languagues) and modules (which are more akin to namespaces). It also allows you to use the '=>' notation for anonymous functions that manipulates the 'this' value for you; so no more 'that = this' :-).
